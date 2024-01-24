@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-cpp_build = "0.5"
 
 [dependencies]
+crossbeam = "0.8.4"
 gtk4 = "0.7.3"
