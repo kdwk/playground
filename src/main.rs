@@ -146,7 +146,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     // .title("Test App");
     with(
         Document::new(Folder::User(User::Pictures(vec!["Testy"])), "test.png"),
-        |mut document| document.create_and_open()?.launch_with_default_app(),
+        |mut document| {
+            document.create_and_open()?.launch_with_default_app()?;
+            println!("{}", document.path());
+            dbg!(document.file());
+            Ok(())
+        },
     )?;
     Ok(())
 }

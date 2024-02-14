@@ -192,21 +192,17 @@ impl Document {
                 .unwrap_or(&Path::new(""))
                 .join(new_filename);
         }
-        match OpenOptions::new()
+        if let Ok(file) = OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
             .append(permissions.appendable())
             .create_new(true)
             .open(self.pathbuf.clone())
         {
-            Ok(file) => {
-                self.file = Some(file);
-                Ok(self)
-            }
-            Err(error) => {
-                eprintln!("{}", error);
-                Err(Box::new(DocumentError::CouldNotCreateFile))
-            }
+            self.file = Some(file);
+            Ok(self)
+        } else {
+            Err(Box::new(DocumentError::CouldNotCreateFile))
         }
     }
     pub fn launch_with_default_app(&mut self) -> Result<(), Box<dyn Error>> {
