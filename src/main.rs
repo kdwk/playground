@@ -69,73 +69,87 @@
 //     // })
 // }
 
-// These should all be structs provided by gtk-rs
-enum Orientation {
-    Vertical,
-    Horizontal,
-}
-struct Window {}
-struct Box {}
-struct Button {}
+mod document;
 
-// This would be the IsA<gtk::Widget> trait had it been object-safe
-trait Widget {}
-impl Widget for Window {}
-impl Widget for Box {}
-impl Widget for Button {}
+use std::error::Error;
 
-trait ButtonModifier {
-    fn label(&self, label: &str) -> &Self {
-        // Set label for self
-        self
-    }
-}
+use document::{with, Document, Folder, OpenMode, User};
 
-impl ButtonModifier for Button {}
+// // These should all be structs provided by gtk-rs
+// enum Orientation {
+//     Vertical,
+//     Horizontal,
+// }
+// struct Window {}
+// struct Box {}
+// struct Button {}
 
-trait WindowModifier {
-    fn title(&self, title: &str) -> &Self {
-        // Set title for self
-        self
-    }
-}
+// // This would be the IsA<gtk::Widget> trait had it been object-safe
+// trait Widget {}
+// impl Widget for Window {}
+// impl Widget for Box {}
+// impl Widget for Button {}
 
-impl WindowModifier for Window {}
+// trait ButtonModifier {
+//     fn label(&self, label: &str) -> &Self {
+//         // Set label for self
+//         self
+//     }
+// }
 
-fn Window(body: impl Widget) -> Window {
-    let window = Window {};
-    // Set the child of window
-    window
-}
+// impl ButtonModifier for Button {}
 
-fn Box(orientation: Orientation, spacing: i32, append: Vec<&dyn Widget>) -> Box {
-    let bo = Box {};
-    // Set orientation of bo
-    // Set spacing of bo
-    for widget in append {
-        // bo.append(widget);
-    }
-    bo
-}
+// trait WindowModifier {
+//     fn title(&self, title: &str) -> &Self {
+//         // Set title for self
+//         self
+//     }
+// }
 
-fn Button() -> Button {
-    let button = Button {};
-    button
-}
+// impl WindowModifier for Window {}
 
-fn main() {
-    Window(Box(
-        Orientation::Vertical,
-        5,
-        vec![
-            Button().label("Gnome"),
-            Button().label("Label"),
-            &Box(
-                Orientation::Horizontal,
-                5,
-                vec![Button().label("What"), Button().label("Where")],
-            ),
-        ],
-    ))
-    .title("Test App");
+// fn Window(body: impl Widget) -> Window {
+//     let window = Window {};
+//     // Set the child of window
+//     window
+// }
+
+// fn Box(orientation: Orientation, spacing: i32, append: Vec<&dyn Widget>) -> Box {
+//     let bo = Box {};
+//     // Set orientation of bo
+//     // Set spacing of bo
+//     for widget in append {
+//         // bo.append(widget);
+//     }
+//     bo
+// }
+
+// fn Button() -> Button {
+//     let button = Button {};
+//     button
+// }
+
+fn main() -> Result<(), Box<dyn Error>> {
+    // Window(Box(
+    //     Orientation::Vertical,
+    //     5,
+    //     vec![
+    //         Button().label("Gnome"),
+    //         Button().label("Label"),
+    //         &Box(
+    //             Orientation::Horizontal,
+    //             5,
+    //             vec![Button().label("What"), Button().label("Where")],
+    //         ),
+    //     ],
+    // ))
+    // .title("Test App");
+    with(
+        Document::new(
+            Folder::User(User::Pictures(vec!["Screenshots"])),
+            "Screenshot 2024-02-09 at 8.15.18 PM.png",
+        ),
+        |mut document| document.launch_with_default_app(),
+    )?;
+    Ok(())
 }
