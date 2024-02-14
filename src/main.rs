@@ -73,7 +73,7 @@ mod document;
 
 use std::error::Error;
 
-use document::{with, Document, Folder, OpenMode, User};
+use document::{with, Document, Folder, OpenMode, Project, User};
 
 // // These should all be structs provided by gtk-rs
 // enum Orientation {
@@ -145,12 +145,22 @@ fn main() -> Result<(), Box<dyn Error>> {
     // ))
     // .title("Test App");
     with(
-        Document::new(Folder::User(User::Pictures(vec!["Testy"])), "test.png"),
+        Document::new(Folder::User(User::Pictures(vec![])), "1.png"),
         |mut document| {
-            document.create_and_open()?.launch_with_default_app()?;
+            document.open(OpenMode::Read)?.launch_with_default_app()?;
             println!("{}", document.path());
-            dbg!(document.file());
             Ok(())
+        },
+    )?;
+    with(
+        Document::new(
+            Folder::Project(Project::Data.with_id("com", "github.kdwk", "Spidey")),
+            "test.txt",
+        ),
+        |mut document| {
+            dbg!(document.name());
+            dbg!(document.path());
+            document.open(OpenMode::Read)?.launch_with_default_app()
         },
     )?;
     Ok(())

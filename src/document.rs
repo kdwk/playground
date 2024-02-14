@@ -43,6 +43,7 @@ impl OpenMode {
 
 pub enum Folder<'a> {
     User(User<'a>),
+    Project((Project, &'a str, &'a str, &'a str)),
 }
 
 fn join_all(path: &Path, join_vec: Vec<&str>) -> PathBuf {
@@ -84,6 +85,30 @@ impl<'a> Folder<'a> {
                     }
                 }
             },
+            Folder::Project((subdir, qualifier, organization, application)) => match subdir {
+                Project::Data => {
+                    if let Some(dir) =
+                        directories::ProjectDirs::from(qualifier, organization, application)
+                    {
+                        let mut pathbuf = PathBuf::from(dir.data_dir());
+                        pathbuf = pathbuf.join(filename);
+                        Ok(pathbuf)
+                    } else {
+                        Err(DocumentError::ProjectDirsNotFound)?
+                    }
+                }
+                Project::Config => {
+                    if let Some(dir) =
+                        directories::ProjectDirs::from(qualifier, organization, application)
+                    {
+                        let mut pathbuf = PathBuf::from(dir.config_dir());
+                        pathbuf = pathbuf.join(filename);
+                        Ok(pathbuf)
+                    } else {
+                        Err(DocumentError::ProjectDirsNotFound)?
+                    }
+                }
+            },
         }
     }
 }
@@ -92,11 +117,29 @@ pub enum User<'a> {
     Pictures(Vec<&'a str>),
     Downloads(Vec<&'a str>),
 }
+
+pub enum Project {
+    Config,
+    Data,
+}
+
+impl<'a> Project {
+    pub fn with_id(
+        self,
+        qualifier: &'a str,
+        organization: &'a str,
+        application: &'a str,
+    ) -> (Self, &'a str, &'a str, &'a str) {
+        (self, qualifier, organization, application)
+    }
+}
+
 #[derive(Debug)]
 pub enum DocumentError {
     UserDirsNotFound,
     PicturesDirNotFound,
     DownloadsDirNotFound,
+    ProjectDirsNotFound,
     FileNotFound,
     CouldNotCreateFile,
     CouldNotCreateParentFolder,
@@ -113,6 +156,7 @@ impl Display for DocumentError {
             Self::CouldNotCreateFile => "CouldNotCreateFile",
             Self::CouldNotCreateParentFolder => "CouldNotFindParentFolder",
             Self::CouldNotLaunchFile => "CouldNotLaunchFile",
+            Self::ProjectDirsNotFound => "ProjectDirsNotFound",
         })
     }
 }
@@ -129,6 +173,7 @@ impl Error for DocumentError {
             Self::CouldNotLaunchFile => {
                 "Unable to use https://crates.io/crates/open to launch file"
             }
+            Self::ProjectDirsNotFound => "Could not find project folder of this app",
         }
     }
 }
