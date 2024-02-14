@@ -142,7 +142,6 @@ impl Document {
         })
     }
     pub fn open(&mut self, permissions: OpenMode) -> Result<&mut Self, Box<dyn Error>> {
-        // WIRE UP CREATE FILE IF NOT EXISTS
         if let Ok(file) = OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
