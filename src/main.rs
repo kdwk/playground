@@ -145,11 +145,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     // ))
     // .title("Test App");
     with(
-        Document::new(
-            Folder::User(User::Pictures(vec!["Screenshots"])),
-            "Screenshot 2024-02-09 at 8.15.18 PM.png",
-        ),
-        |mut document| document.launch_with_default_app(),
+        Document::new(Folder::User(User::Pictures(vec!["Testy"])), "test.png"),
+        |mut document| document.create_and_open()?.launch_with_default_app(),
     )?;
     Ok(())
 }

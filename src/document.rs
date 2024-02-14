@@ -154,7 +154,8 @@ impl Document {
             Err(Box::new(DocumentError::FileNotFound))
         }
     }
-    pub fn create_and_open(&mut self, permissions: OpenMode) -> Result<&mut Self, Box<dyn Error>> {
+    pub fn create_and_open(&mut self) -> Result<&mut Self, Box<dyn Error>> {
+        let permissions = OpenMode::ReadReplace;
         if let Some(parent_folder) = self.pathbuf.clone().parent() {
             if let Err(_) = create_dir_all(parent_folder) {
                 Err(DocumentError::CouldNotCreateParentFolder)?
@@ -191,17 +192,21 @@ impl Document {
                 .unwrap_or(&Path::new(""))
                 .join(new_filename);
         }
-        if let Ok(file) = OpenOptions::new()
+        match OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
             .append(permissions.appendable())
             .create_new(true)
             .open(self.pathbuf.clone())
         {
-            self.file = Some(file);
-            Ok(self)
-        } else {
-            Err(Box::new(DocumentError::CouldNotCreateFile))
+            Ok(file) => {
+                self.file = Some(file);
+                Ok(self)
+            }
+            Err(error) => {
+                eprintln!("{}", error);
+                Err(Box::new(DocumentError::CouldNotCreateFile))
+            }
         }
     }
     pub fn launch_with_default_app(&mut self) -> Result<(), Box<dyn Error>> {
