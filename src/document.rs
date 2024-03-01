@@ -362,18 +362,23 @@ impl Document {
         self.permissions = None;
         self
     }
+    pub fn permissions(&self) -> Option<Mode> {
+        self.permissions
+    }
     pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
         match self.permissions {
             Some(permissions) => match permissions.writable() {
                 true => {
                     if let Some(file) = self.file() {
                         file.write_all(content.as_bytes())?;
+                    } else {
+                        Err(DocumentError::FileNotOpen(self.path()))?
                     }
                     Ok(self)
                 }
                 false => Err(DocumentError::FileNotWritable(self.path()))?,
             },
-            None => Err(self.path())?,
+            None => Err(DocumentError::FileNotOpen(self.path()))?,
         }
     }
 }
