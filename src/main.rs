@@ -71,7 +71,7 @@
 
 mod document;
 
-use std::{error::Error, io::Write, ops::Add};
+use std::error::Error;
 
 use document::{
     with, Create, Document,
@@ -183,7 +183,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Document::new(User(Downloads(&[])), "gdb.txt")?.open(Mode::Append, Create::No)?,
         |debug_file| {
             debug_file
-                .write("Bello~!\nGnome")?
+                .write("\nBello~!\nGnome")?
                 .launch_with_default_app()
         },
     );

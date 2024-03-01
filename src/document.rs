@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 use directories;
 use open;
-use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
 use std::fs::{create_dir_all, File, OpenOptions};
@@ -65,7 +64,7 @@ impl<'a> Folder<'a> {
                 User::Pictures(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.picture_dir() {
-                            let mut pathbuf = join_all(path, subdirs.clone());
+                            let mut pathbuf = join_all(path, subdirs);
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
@@ -78,7 +77,7 @@ impl<'a> Folder<'a> {
                 User::Videos(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.video_dir() {
-                            let mut pathbuf = join_all(path, subdirs.clone());
+                            let mut pathbuf = join_all(path, subdirs);
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
@@ -91,7 +90,7 @@ impl<'a> Folder<'a> {
                 User::Downloads(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.download_dir() {
-                            let mut pathbuf = join_all(path, subdirs.clone());
+                            let mut pathbuf = join_all(path, subdirs);
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
@@ -104,7 +103,7 @@ impl<'a> Folder<'a> {
                 User::Documents(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.document_dir() {
-                            let mut pathbuf = join_all(path, subdirs.clone());
+                            let mut pathbuf = join_all(path, subdirs);
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
@@ -117,7 +116,7 @@ impl<'a> Folder<'a> {
                 User::Home(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         let path = dir.home_dir();
-                        let mut pathbuf = join_all(path, subdirs.clone());
+                        let mut pathbuf = join_all(path, subdirs);
                         pathbuf = pathbuf.join(filename);
                         Ok(pathbuf)
                     } else {
@@ -198,6 +197,8 @@ pub enum DocumentError {
     CouldNotCreateParentFolder(String),
     CouldNotLaunchFile(String),
     CouldNotOpenFile(String),
+    FileNotWritable(String),
+    FileNotOpen(String),
 }
 
 impl Display for DocumentError {
@@ -220,6 +221,8 @@ impl Display for DocumentError {
             Self::ProjectDirsNotFound => "Project directories not found".to_string(),
             Self::CouldNotOpenFile(file_path) => "Could not open file: ".to_string() + file_path,
             Self::DocumentsDirNotFound => "Documents directory not found".to_string(),
+            Self::FileNotWritable(file_path) => "File not writable: ".to_string() + file_path,
+            Self::FileNotOpen(file_path) => "File not open: ".to_string() + file_path,
         };
         f.pad(msg.as_str())
     }
@@ -360,10 +363,18 @@ impl Document {
         self
     }
     pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
-        if let Some(file) = self.file() {
-            file.write_all(content.as_bytes())?;
+        match self.permissions {
+            Some(permissions) => match permissions.writable() {
+                true => {
+                    if let Some(file) = self.file() {
+                        file.write_all(content.as_bytes())?;
+                    }
+                    Ok(self)
+                }
+                false => Err(DocumentError::FileNotWritable(self.path()))?,
+            },
+            None => Err(self.path())?,
         }
-        Ok(self)
     }
 }
 
