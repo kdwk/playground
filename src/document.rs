@@ -1,18 +1,22 @@
+#![allow(dead_code)]
 use directories;
 use open;
+use std::borrow::Borrow;
 use std::error::Error;
 use std::fmt::Display;
-use std::fs::{create_dir_all, OpenOptions};
+use std::fs::{create_dir_all, File, OpenOptions};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct Document {
     pathbuf: PathBuf,
-    file: Option<std::fs::File>,
+    file: Option<File>,
+    permissions: Option<Mode>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum OpenMode {
+pub enum Mode {
     Read,
     Replace,
     Append,
@@ -20,7 +24,7 @@ pub enum OpenMode {
     ReadAppend,
 }
 
-impl OpenMode {
+impl Mode {
     pub fn readable(&self) -> bool {
         match self {
             Self::Read | Self::ReadReplace | Self::ReadAppend => true,
@@ -46,10 +50,10 @@ pub enum Folder<'a> {
     Project((Project, &'a str, &'a str, &'a str)),
 }
 
-fn join_all(path: &Path, join_vec: Vec<&str>) -> PathBuf {
+fn join_all(path: &Path, subdirs: &[&str]) -> PathBuf {
     let mut pathbuf = path.to_path_buf();
-    for joinable in join_vec {
-        pathbuf.push(joinable);
+    for subdir in subdirs {
+        pathbuf.push(subdir);
     }
     pathbuf
 }
@@ -58,10 +62,10 @@ impl<'a> Folder<'a> {
     fn into_pathbuf_result(&self, filename: &str) -> Result<PathBuf, DocumentError> {
         match self {
             Folder::User(subdir) => match subdir {
-                User::Pictures(join_vec) => {
+                User::Pictures(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.picture_dir() {
-                            let mut pathbuf = join_all(path, join_vec.clone());
+                            let mut pathbuf = join_all(path, subdirs.clone());
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
@@ -71,15 +75,51 @@ impl<'a> Folder<'a> {
                         Err(DocumentError::UserDirsNotFound)?
                     }
                 }
-                User::Downloads(join_vec) => {
+                User::Videos(subdirs) => {
+                    if let Some(dir) = directories::UserDirs::new() {
+                        if let Some(path) = dir.video_dir() {
+                            let mut pathbuf = join_all(path, subdirs.clone());
+                            pathbuf = pathbuf.join(filename);
+                            Ok(pathbuf)
+                        } else {
+                            Err(DocumentError::VideosDirNotFound)?
+                        }
+                    } else {
+                        Err(DocumentError::UserDirsNotFound)?
+                    }
+                }
+                User::Downloads(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.download_dir() {
-                            let mut pathbuf = join_all(path, join_vec.clone());
+                            let mut pathbuf = join_all(path, subdirs.clone());
                             pathbuf = pathbuf.join(filename);
                             Ok(pathbuf)
                         } else {
                             Err(DocumentError::DownloadsDirNotFound)?
                         }
+                    } else {
+                        Err(DocumentError::UserDirsNotFound)?
+                    }
+                }
+                User::Documents(subdirs) => {
+                    if let Some(dir) = directories::UserDirs::new() {
+                        if let Some(path) = dir.document_dir() {
+                            let mut pathbuf = join_all(path, subdirs.clone());
+                            pathbuf = pathbuf.join(filename);
+                            Ok(pathbuf)
+                        } else {
+                            Err(DocumentError::DocumentsDirNotFound)?
+                        }
+                    } else {
+                        Err(DocumentError::UserDirsNotFound)?
+                    }
+                }
+                User::Home(subdirs) => {
+                    if let Some(dir) = directories::UserDirs::new() {
+                        let path = dir.home_dir();
+                        let mut pathbuf = join_all(path, subdirs.clone());
+                        pathbuf = pathbuf.join(filename);
+                        Ok(pathbuf)
                     } else {
                         Err(DocumentError::UserDirsNotFound)?
                     }
@@ -114,8 +154,11 @@ impl<'a> Folder<'a> {
 }
 
 pub enum User<'a> {
-    Pictures(Vec<&'a str>),
-    Downloads(Vec<&'a str>),
+    Documents(&'a [&'a str]),
+    Pictures(&'a [&'a str]),
+    Videos(&'a [&'a str]),
+    Downloads(&'a [&'a str]),
+    Home(&'a [&'a str]),
 }
 
 pub enum Project {
@@ -124,6 +167,7 @@ pub enum Project {
 }
 
 impl<'a> Project {
+    /// The app ID should have the reverse-DNS format of "com.example.App", where "com" is the qualifier, "example" is the organization and "App" is the application
     pub fn with_id(
         self,
         qualifier: &'a str,
@@ -134,47 +178,56 @@ impl<'a> Project {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Create {
+    No,
+    OnlyIfNotExists,
+    AutoRenameIfExists,
+}
+
 #[derive(Debug)]
 pub enum DocumentError {
     UserDirsNotFound,
     PicturesDirNotFound,
+    VideosDirNotFound,
     DownloadsDirNotFound,
+    DocumentsDirNotFound,
     ProjectDirsNotFound,
-    FileNotFound,
-    CouldNotCreateFile,
-    CouldNotCreateParentFolder,
-    CouldNotLaunchFile,
+    FileNotFound(String),
+    CouldNotCreateFile(String),
+    CouldNotCreateParentFolder(String),
+    CouldNotLaunchFile(String),
+    CouldNotOpenFile(String),
 }
 
 impl Display for DocumentError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.pad(match self {
-            Self::UserDirsNotFound => "UserDirsNotFound",
-            Self::PicturesDirNotFound => "PicturesDirNotFound",
-            Self::DownloadsDirNotFound => "DownloadsDirNotFound",
-            Self::FileNotFound => "FileNotFound",
-            Self::CouldNotCreateFile => "CouldNotCreateFile",
-            Self::CouldNotCreateParentFolder => "CouldNotFindParentFolder",
-            Self::CouldNotLaunchFile => "CouldNotLaunchFile",
-            Self::ProjectDirsNotFound => "ProjectDirsNotFound",
-        })
+        let msg: String = match self {
+            Self::UserDirsNotFound => "User directories not found".to_string(),
+            Self::PicturesDirNotFound => "Pictures directory not found".to_string(),
+            Self::VideosDirNotFound => "Videos directory not found".to_string(),
+            Self::DownloadsDirNotFound => "Downloads directory not found".to_string(),
+            Self::FileNotFound(file_path) => "File not found: ".to_string() + file_path,
+            Self::CouldNotCreateFile(file_path) => {
+                "Could not create file: ".to_string() + file_path
+            }
+            Self::CouldNotCreateParentFolder(parent_folder_path) => {
+                "Could not create parent folder: ".to_string() + parent_folder_path
+            }
+            Self::CouldNotLaunchFile(file_path) => {
+                "Could not launch file with default app: ".to_string() + file_path
+            }
+            Self::ProjectDirsNotFound => "Project directories not found".to_string(),
+            Self::CouldNotOpenFile(file_path) => "Could not open file: ".to_string() + file_path,
+            Self::DocumentsDirNotFound => "Documents directory not found".to_string(),
+        };
+        f.pad(msg.as_str())
     }
 }
 
 impl Error for DocumentError {
     fn description(&self) -> &str {
-        match self {
-            Self::UserDirsNotFound => "Could not find user directory",
-            Self::PicturesDirNotFound => "Could not find pictures directory",
-            Self::DownloadsDirNotFound => "Could not find downloads directory",
-            Self::FileNotFound => "Could not find requested file",
-            Self::CouldNotCreateFile => "Could not create file",
-            Self::CouldNotCreateParentFolder => "Could not find parent folder of this file",
-            Self::CouldNotLaunchFile => {
-                "Unable to use https://crates.io/crates/open to launch file"
-            }
-            Self::ProjectDirsNotFound => "Could not find project folder of this app",
-        }
+        "Document error"
     }
 }
 
@@ -184,29 +237,10 @@ impl Document {
         Ok(Self {
             pathbuf,
             file: None,
+            permissions: None,
         })
     }
-    pub fn open(&mut self, permissions: OpenMode) -> Result<&mut Self, Box<dyn Error>> {
-        if let Ok(file) = OpenOptions::new()
-            .read(permissions.readable())
-            .write(permissions.writable())
-            .append(permissions.appendable())
-            .open(self.pathbuf.clone())
-        {
-            self.file = Some(file);
-            Ok(self)
-        } else {
-            Err(Box::new(DocumentError::FileNotFound))
-        }
-    }
-    pub fn create_and_open(&mut self) -> Result<&mut Self, Box<dyn Error>> {
-        let permissions = OpenMode::ReadReplace;
-        if let Some(parent_folder) = self.pathbuf.clone().parent() {
-            if let Err(_) = create_dir_all(parent_folder) {
-                Err(DocumentError::CouldNotCreateParentFolder)?
-            }
-        }
-        let mut suffix = 0;
+    pub fn open(&mut self, permissions: Mode, create: Create) -> Result<&mut Self, Box<dyn Error>> {
         let filename = self
             .pathbuf
             .clone()
@@ -226,28 +260,73 @@ impl Document {
             .to_str()
             .unwrap_or_default()
             .to_string();
-        while self.pathbuf.exists() {
-            suffix += 1;
-            let new_filename =
-                filename.clone() + suffix.to_string().as_str() + "." + extension.as_str();
-            self.pathbuf = self
-                .pathbuf
-                .clone()
-                .parent()
-                .unwrap_or(&Path::new(""))
-                .join(new_filename);
+        match create {
+            Create::OnlyIfNotExists => {
+                if let Some(parent_folder) = self.pathbuf.clone().parent() {
+                    if let Err(_) = create_dir_all(parent_folder) {
+                        Err(DocumentError::CouldNotCreateParentFolder(
+                            parent_folder
+                                .to_path_buf()
+                                .to_str()
+                                .unwrap_or("")
+                                .to_string(),
+                        ))?
+                    }
+                }
+                if !self.pathbuf.exists() {
+                    OpenOptions::new()
+                        .read(false)
+                        .write(true)
+                        .create_new(true)
+                        .open(self.pathbuf.clone())?;
+                }
+            }
+            Create::AutoRenameIfExists => {
+                if let Some(parent_folder) = self.pathbuf.clone().parent() {
+                    if let Err(_) = create_dir_all(parent_folder) {
+                        Err(DocumentError::CouldNotCreateParentFolder(
+                            parent_folder
+                                .to_path_buf()
+                                .to_str()
+                                .unwrap_or("")
+                                .to_string(),
+                        ))?
+                    }
+                }
+                let mut suffix: u32 = 0;
+                while self.pathbuf.exists() {
+                    suffix += 1;
+                    let new_filename =
+                        filename.clone() + suffix.to_string().as_str() + "." + extension.as_str();
+                    self.pathbuf = self
+                        .pathbuf
+                        .clone()
+                        .parent()
+                        .unwrap_or(&Path::new(""))
+                        .join(new_filename);
+                }
+                OpenOptions::new()
+                    .read(false)
+                    .write(true)
+                    .create_new(true)
+                    .open(self.pathbuf.clone())?;
+            }
+            _ => {}
+        }
+        if !self.pathbuf.exists() {
+            Err(DocumentError::FileNotFound(self.path()))?
         }
         if let Ok(file) = OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
             .append(permissions.appendable())
-            .create_new(true)
             .open(self.pathbuf.clone())
         {
             self.file = Some(file);
+            self.permissions = Some(permissions);
             Ok(self)
         } else {
-            Err(Box::new(DocumentError::CouldNotCreateFile))
+            Err(DocumentError::CouldNotOpenFile(self.path()))?
         }
     }
     pub fn launch_with_default_app(&mut self) -> Result<(), Box<dyn Error>> {
@@ -255,7 +334,7 @@ impl Document {
             self.file = None;
         }
         if let Err(_) = open::that_detached(self.path()) {
-            Err(Box::new(DocumentError::CouldNotLaunchFile))
+            Err(DocumentError::CouldNotLaunchFile(self.path()))?
         } else {
             Ok(())
         }
@@ -272,17 +351,28 @@ impl Document {
     pub fn path(&self) -> String {
         self.pathbuf.as_os_str().to_str().unwrap_or("").to_string()
     }
-    pub fn file(&self) -> Option<&std::fs::File> {
-        self.file.as_ref()
+    pub fn file(&mut self) -> Option<&mut File> {
+        self.file.as_mut()
+    }
+    pub fn close(&mut self) -> &mut Self {
+        self.file = None;
+        self.permissions = None;
+        self
+    }
+    pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
+        if let Some(file) = self.file() {
+            file.write_all(content.as_bytes())?;
+        }
+        Ok(self)
     }
 }
 
-pub fn with<Closure>(
-    file: Result<Document, Box<dyn Error>>,
-    closure: Closure,
-) -> Result<(), Box<dyn Error>>
+pub fn with<Closure>(document: &mut Document, closure: Closure)
 where
-    Closure: Fn(Document) -> Result<(), Box<dyn Error>>,
+    Closure: FnOnce(&mut Document) -> Result<(), Box<dyn Error>>,
 {
-    closure(file?)
+    match closure(document) {
+        Ok(_) => {}
+        Err(error) => eprintln!("{}", error),
+    }
 }
