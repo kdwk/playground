@@ -3,17 +3,12 @@ use directories;
 use open;
 use std::collections::HashMap;
 use std::error::Error;
+use std::ffi::OsStr;
 use std::fmt::Display;
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::Write;
 use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone)]
-pub struct Document {
-    pathbuf: PathBuf,
-    create_policy: Create,
-}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Mode {
@@ -235,6 +230,12 @@ impl Error for DocumentError {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Document {
+    pathbuf: PathBuf,
+    create_policy: Create,
+}
+
 impl Document {
     pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let pathbuf = location.into_pathbuf_result(filename)?;
@@ -261,7 +262,24 @@ impl Document {
             Ok(())
         }
     }
-    pub fn name(&self) -> String {
+    pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
+        self.open_file(permissions)
+    }
+    pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
+        let mut file = self.open_file(Mode::Append)?;
+        file.write_all(content.as_bytes())?;
+        Ok(self)
+    }
+}
+
+pub trait FileSystemEntity {
+    fn path(&self) -> String;
+    fn name(&self) -> String;
+    fn exists(&self) -> bool;
+}
+
+impl FileSystemEntity for Document {
+    fn name(&self) -> String {
         self.pathbuf
             .clone()
             .file_name()
@@ -270,16 +288,35 @@ impl Document {
             .unwrap_or("")
             .to_string()
     }
-    pub fn path(&self) -> String {
+    fn path(&self) -> String {
         self.pathbuf.as_os_str().to_str().unwrap_or("").to_string()
     }
-    pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
-        self.open_file(permissions)
+    fn exists(&self) -> bool {
+        self.pathbuf.exists()
     }
-    pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
-        let mut file = self.open_file(Mode::Append)?;
-        file.write_all(content.as_bytes())?;
-        Ok(self)
+}
+
+impl<'a> FileSystemEntity for Folder<'a> {
+    fn exists(&self) -> bool {
+        self.into_pathbuf_result("")
+            .unwrap_or(PathBuf::new())
+            .exists()
+    }
+    fn name(&self) -> String {
+        self.into_pathbuf_result("")
+            .unwrap_or(PathBuf::new())
+            .file_name()
+            .unwrap_or(OsStr::new(""))
+            .to_str()
+            .unwrap_or("")
+            .to_string()
+    }
+    fn path(&self) -> String {
+        self.into_pathbuf_result("")
+            .unwrap_or(PathBuf::new())
+            .to_str()
+            .unwrap_or("")
+            .to_string()
     }
 }
 

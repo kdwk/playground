@@ -74,7 +74,7 @@ mod document;
 use std::error::Error;
 
 use document::{
-    with, Create, Document,
+    with, Create, Document, FileSystemEntity,
     Folder::{Project, User},
     Mode,
     Project::{Config, Data},
@@ -158,26 +158,27 @@ fn main() -> Result<(), Box<dyn Error>> {
     // ))
     // .title("Test App");
 
-    with(
-        &[
-            Document::at(User(Pictures(&[])), "1.png", Create::No),
-            Document::at(User(Downloads(&[])), "unnamed1.txt", Create::No),
-        ],
-        |d| {
-            println!("{}", d["1.png"].name());
-            println!("{}", d["unnamed1.txt"].path());
-            d["unnamed1.txt"].launch_with_default_app()?;
-            println!("{}", d["1.png"].path());
-            Ok(())
-        },
-    );
-    with(
-        &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
-        |mut d| {
-            d["gdb.txt"].write("\nHello!")?.launch_with_default_app()?;
-            Ok(())
-        },
-    );
+    // with(
+    //     &[
+    //         Document::at(User(Pictures(&[])), "1.png", Create::No),
+    //         Document::at(User(Downloads(&[])), "unnamed1.txt", Create::No),
+    //     ],
+    //     |d| {
+    //         println!("{}", d["1.png"].name());
+    //         println!("{}", d["unnamed1.txt"].path());
+    //         d["unnamed1.txt"].launch_with_default_app()?;
+    //         println!("{}", d["1.png"].path());
+    //         Ok(())
+    //     },
+    // );
+    // with(
+    //     &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
+    //     |mut d| {
+    //         d["gdb.txt"].write("\nHello!")?.launch_with_default_app()?;
+    //         Ok(())
+    //     },
+    // );
+    dbg!(User(Pictures(&[])).name());
     // with(
     //     &[Document::at(
     //         Project(Data.with_id("com", "github.kdwk", "Spidey")),
