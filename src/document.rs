@@ -244,6 +244,12 @@ impl Document {
             create_policy: create,
         })
     }
+    pub fn from(string: String, create: Create) -> Self {
+        Self {
+            pathbuf: PathBuf::from(string),
+            create_policy: create,
+        }
+    }
     fn open_file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         match OpenOptions::new()
             .read(permissions.readable())
