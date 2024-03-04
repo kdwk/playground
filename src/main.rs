@@ -161,11 +161,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     with(
         &[
             Document::at(User(Pictures(&[])), "1.png", Create::No),
-            Document::at(User(Downloads(&[])), "unnamed.jpg", Create::OnlyIfNotExists),
+            Document::at(User(Downloads(&[])), "unnamed1.txt", Create::No),
         ],
         |d| {
             println!("{}", d["1.png"].name());
-            d["unnamed.jpg"].launch_with_default_app()?;
+            println!("{}", d["unnamed1.txt"].path());
+            d["unnamed1.txt"].launch_with_default_app()?;
             println!("{}", d["1.png"].path());
             Ok(())
         },
@@ -177,17 +178,17 @@ fn main() -> Result<(), Box<dyn Error>> {
             Ok(())
         },
     );
-    with(
-        &[Document::at(
-            Project(Data.with_id("com", "github.kdwk", "Spidey")),
-            "test.txt",
-            Create::OnlyIfNotExists,
-        )],
-        |d| {
-            println!("{}", d["test.txt"].path());
-            d["test.txt"].launch_with_default_app()?;
-            Ok(())
-        },
-    );
+    // with(
+    //     &[Document::at(
+    //         Project(Data.with_id("com", "github.kdwk", "Spidey")),
+    //         "test.txt",
+    //         Create::OnlyIfNotExists,
+    //     )],
+    //     |d| {
+    //         println!("{}", d["test.txt"].path());
+    //         d["test.txt"].launch_with_default_app()?;
+    //         Ok(())
+    //     },
+    // );
     Ok(())
 }
