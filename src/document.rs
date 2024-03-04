@@ -1,17 +1,18 @@
 #![allow(dead_code)]
 use directories;
 use open;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::Write;
+use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Document {
     pathbuf: PathBuf,
-    file: Option<File>,
-    permissions: Option<Mode>,
+    create_policy: Create,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -235,15 +236,14 @@ impl Error for DocumentError {
 }
 
 impl Document {
-    pub fn new(location: Folder, filename: &str) -> Result<Self, Box<dyn Error>> {
+    pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let pathbuf = location.into_pathbuf_result(filename)?;
         Ok(Self {
             pathbuf,
-            file: None,
-            permissions: None,
+            create_policy: create,
         })
     }
-    pub fn open(&mut self, permissions: Mode, create: Create) -> Result<&mut Self, Box<dyn Error>> {
+    fn open_file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         let filename = self
             .pathbuf
             .clone()
@@ -263,7 +263,7 @@ impl Document {
             .to_str()
             .unwrap_or_default()
             .to_string();
-        match create {
+        match self.create_policy {
             Create::OnlyIfNotExists => {
                 if let Some(parent_folder) = self.pathbuf.clone().parent() {
                     if let Err(_) = create_dir_all(parent_folder) {
@@ -319,23 +319,17 @@ impl Document {
         if !self.pathbuf.exists() {
             Err(DocumentError::FileNotFound(self.path()))?
         }
-        if let Ok(file) = OpenOptions::new()
+        match OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
             .append(permissions.appendable())
             .open(self.pathbuf.clone())
         {
-            self.file = Some(file);
-            self.permissions = Some(permissions);
-            Ok(self)
-        } else {
-            Err(DocumentError::CouldNotOpenFile(self.path()))?
+            Ok(file) => Ok(file),
+            Err(_) => Err(DocumentError::CouldNotOpenFile(self.path()))?,
         }
     }
-    pub fn launch_with_default_app(&mut self) -> Result<(), Box<dyn Error>> {
-        if let Some(_) = self.file {
-            self.file = None;
-        }
+    pub fn launch_with_default_app(&self) -> Result<(), Box<dyn Error>> {
         if let Err(_) = open::that_detached(self.path()) {
             Err(DocumentError::CouldNotLaunchFile(self.path()))?
         } else {
@@ -354,40 +348,47 @@ impl Document {
     pub fn path(&self) -> String {
         self.pathbuf.as_os_str().to_str().unwrap_or("").to_string()
     }
-    pub fn file(&mut self) -> Option<&mut File> {
-        self.file.as_mut()
-    }
-    pub fn close(&mut self) -> &mut Self {
-        self.file = None;
-        self.permissions = None;
-        self
-    }
-    pub fn permissions(&self) -> Option<Mode> {
-        self.permissions
+    pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
+        self.open_file(permissions)
     }
     pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
-        match self.permissions {
-            Some(permissions) => match permissions.writable() {
-                true => {
-                    if let Some(file) = self.file() {
-                        file.write_all(content.as_bytes())?;
-                    } else {
-                        Err(DocumentError::FileNotOpen(self.path()))?
-                    }
-                    Ok(self)
-                }
-                false => Err(DocumentError::FileNotWritable(self.path()))?,
-            },
-            None => Err(DocumentError::FileNotOpen(self.path()))?,
-        }
+        let mut file = self.open_file(Mode::Append)?;
+        file.write_all(content.as_bytes())?;
+        Ok(self)
     }
 }
 
-pub fn with<Closure>(document: &mut Document, closure: Closure)
+pub struct Map(HashMap<String, Document>);
+
+impl Index<&str> for Map {
+    type Output = Document;
+    fn index(&self, index: &str) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl IndexMut<&str> for Map {
+    fn index_mut(&mut self, index: &str) -> &mut Self::Output {
+        self.0.get_mut(index).unwrap()
+    }
+}
+
+pub fn with<Closure>(documents: &[Result<Document, Box<dyn Error>>], closure: Closure)
 where
-    Closure: FnOnce(&mut Document) -> Result<(), Box<dyn Error>>,
+    Closure: FnOnce(Map) -> Result<(), Box<dyn Error>>,
 {
-    match closure(document) {
+    let mut document_map = HashMap::new();
+    for document_result in documents.to_owned() {
+        let document = match document_result {
+            Ok(document) => document,
+            Err(error) => {
+                eprintln!("{}", error);
+                return;
+            }
+        };
+        document_map.insert(document.name(), (*document).clone());
+    }
+    match closure(Map(document_map)) {
         Ok(_) => {}
         Err(error) => eprintln!("{}", error),
     }

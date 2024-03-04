@@ -158,46 +158,36 @@ fn main() -> Result<(), Box<dyn Error>> {
     // ))
     // .title("Test App");
 
-    // with(
-    //     Document::new(User(Pictures(&[])), "1.png")?.open(Mode::Read, Create::OnlyIfNotExists)?,
-    //     |png_1| {
-    //         with(
-    //             Document::new(User(Pictures(&[])), "2.jxl")?.open(Mode::Read, Create::No)?,
-    //             |jxl_1| {
-    //                 println!("{}", png_1.name());
-    //                 println!("{}", jxl_1.name());
-    //                 jxl_1.launch_with_default_app()?;
-    //                 jxl_1.open(Mode::Replace, Create::No)?;
-    //                 dbg!(jxl_1.file());
-    //                 png_1.close();
-    //                 Ok(())
-    //             },
-    //         );
-    //         dbg!(png_1.file());
-    //         png_1.launch_with_default_app()?;
-    //         println!("{}", png_1.path());
-    //         Ok(())
-    //     },
-    // );
     with(
-        Document::new(User(Downloads(&[])), "gdb.txt")?.open(Mode::Append, Create::No)?,
-        |debug_file| {
-            debug_file
-                .write("\nBello~!\nGnome")?
-                .launch_with_default_app()
+        &[
+            Document::at(User(Pictures(&[])), "1.png", Create::No),
+            Document::at(User(Downloads(&[])), "unnamed.jpg", Create::OnlyIfNotExists),
+        ],
+        |d| {
+            println!("{}", d["1.png"].name());
+            d["unnamed.jpg"].launch_with_default_app()?;
+            println!("{}", d["1.png"].path());
+            Ok(())
         },
     );
-    // with(
-    //     Document::new(
-    //         Project(Data.with_id("com", "github.kdwk", "Spidey")),
-    //         "test.txt",
-    //     )?
-    //     .open(Mode::Read, Create::OnlyIfNotExists),
-    //     |document| {
-    //         dbg!(document.name());
-    //         dbg!(document.path());
-    //         document.launch_with_default_app()
-    //     },
-    // )?;
+    with(
+        &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
+        |mut d| {
+            d["gdb.txt"].write("\nHello!")?.launch_with_default_app()?;
+            Ok(())
+        },
+    );
+    with(
+        &[Document::at(
+            Project(Data.with_id("com", "github.kdwk", "Spidey")),
+            "test.txt",
+            Create::OnlyIfNotExists,
+        )],
+        |d| {
+            println!("{}", d["test.txt"].path());
+            d["test.txt"].launch_with_default_app()?;
+            Ok(())
+        },
+    );
     Ok(())
 }
