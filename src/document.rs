@@ -42,7 +42,7 @@ impl Mode {
 
 pub enum Folder<'a> {
     User(User<'a>),
-    Project((Project, &'a str, &'a str, &'a str)),
+    Project((Project<'a>, &'a str, &'a str, &'a str)),
 }
 
 fn join_all(path: &Path, subdirs: &[&str]) -> PathBuf {
@@ -121,22 +121,22 @@ impl<'a> Folder<'a> {
                 }
             },
             Folder::Project((subdir, qualifier, organization, application)) => match subdir {
-                Project::Data => {
+                Project::Data(subdirs) => {
                     if let Some(dir) =
                         directories::ProjectDirs::from(qualifier, organization, application)
                     {
-                        let mut pathbuf = PathBuf::from(dir.data_dir());
+                        let mut pathbuf = join_all(dir.data_dir(), subdirs);
                         pathbuf = pathbuf.join(filename);
                         Ok(pathbuf)
                     } else {
                         Err(DocumentError::ProjectDirsNotFound)?
                     }
                 }
-                Project::Config => {
+                Project::Config(subdirs) => {
                     if let Some(dir) =
                         directories::ProjectDirs::from(qualifier, organization, application)
                     {
-                        let mut pathbuf = PathBuf::from(dir.config_dir());
+                        let mut pathbuf = join_all(dir.config_dir(), subdirs);
                         pathbuf = pathbuf.join(filename);
                         Ok(pathbuf)
                     } else {
@@ -156,12 +156,12 @@ pub enum User<'a> {
     Home(&'a [&'a str]),
 }
 
-pub enum Project {
-    Config,
-    Data,
+pub enum Project<'a> {
+    Config(&'a [&'a str]),
+    Data(&'a [&'a str]),
 }
 
-impl<'a> Project {
+impl<'a> Project<'a> {
     /// The app ID should have the reverse-DNS format of "com.example.App", where "com" is the qualifier, "example" is the organization and "App" is the application
     pub fn with_id(
         self,
