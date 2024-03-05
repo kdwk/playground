@@ -244,11 +244,11 @@ impl Document {
             create_policy: create,
         })
     }
-    pub fn from(string: String, create: Create) -> Self {
-        Self {
+    pub fn from(string: String, create: Create) -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
             pathbuf: PathBuf::from(string),
             create_policy: create,
-        }
+        })
     }
     fn open_file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         match OpenOptions::new()
