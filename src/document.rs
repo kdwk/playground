@@ -265,9 +265,9 @@ impl Document {
     pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         self.open_file(permissions)
     }
-    pub fn write(&mut self, content: &str) -> Result<&mut Self, Box<dyn Error>> {
+    pub fn write(&mut self, content: &[u8]) -> Result<&mut Self, Box<dyn Error>> {
         let mut file = self.open_file(Mode::Append)?;
-        file.write_all(content.as_bytes())?;
+        file.write_all(content)?;
         Ok(self)
     }
     pub fn extension(&mut self) -> String {
