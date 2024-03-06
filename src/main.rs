@@ -179,9 +179,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     //     },
     // );
     dbg!(User(Pictures(&[])).name());
-    dbg!(
-        Project(Data(&[]).with_id("com", "github.kdwk", "Spidey")).exists()
-    );
+    dbg!(Project(Data(&[]).with_id("com", "github.kdwk", "Spidey")).exists());
     // with(
     //     &[Document::at(
     //         Project(Data.with_id("com", "github.kdwk", "Spidey")),

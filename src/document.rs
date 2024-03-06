@@ -362,6 +362,18 @@ impl Document {
     }
 }
 
+pub trait Alias {
+    fn alias(&mut self, alias: String);
+}
+
+impl Alias for Result<Document, Box<dyn Error>> {
+    fn alias(&mut self, alias: String) {
+        if let Ok(document) = self {
+            document.alias = alias;
+        }
+    }
+}
+
 pub trait FileSystemEntity {
     fn path(&self) -> String;
     fn name(&self) -> String;
