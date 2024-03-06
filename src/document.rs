@@ -238,16 +238,14 @@ pub struct Document {
 }
 
 impl Document {
-    pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
-        let mut pathbuf = location.into_pathbuf_result(filename)?;
-        let original_name = pathbuf.name();
-        // let mut setup = || -> Result<_, Box<dyn Error>> {
-
-        //     Ok(())
-        // };
-        // setup()?;
+    fn setup(mut pathbuf: PathBuf, create: Create) -> Result<PathBuf, Box<dyn Error>> {
         let name = pathbuf.name();
-        let extension = pathbuf.extension().unwrap_or(OsStr::new("")).to_str().unwrap_or("").to_string();
+        let extension = pathbuf
+            .extension()
+            .unwrap_or(OsStr::new(""))
+            .to_str()
+            .unwrap_or("")
+            .to_string();
         match create {
             Create::OnlyIfNotExists => {
                 if let Some(parent_folder) = pathbuf.clone().parent() {
@@ -307,8 +305,23 @@ impl Document {
         if !pathbuf.exists() {
             Err(DocumentError::FileNotFound(pathbuf.path()))?
         }
+        Ok(pathbuf)
+    }
+    pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = location.into_pathbuf_result(filename)?;
+        let original_name = pathbuf.name();
+        pathbuf = Document::setup(pathbuf, create)?;
         Ok(Self {
             alias: original_name,
+            pathbuf,
+            create_policy: create,
+        })
+    }
+    pub fn from_path(path: String, alias: &str, create: Create) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = PathBuf::from(path);
+        pathbuf = Document::setup(pathbuf, create)?;
+        Ok(Self {
+            alias: alias.to_string(),
             pathbuf,
             create_policy: create,
         })
