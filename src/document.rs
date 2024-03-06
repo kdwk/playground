@@ -363,13 +363,17 @@ impl Document {
 }
 
 pub trait Alias {
-    fn alias(&mut self, alias: String);
+    fn alias(self, alias: String) -> Result<Document, Box<dyn Error>>;
 }
 
 impl Alias for Result<Document, Box<dyn Error>> {
-    fn alias(&mut self, alias: String) {
-        if let Ok(document) = self {
-            document.alias = alias;
+    fn alias(self, alias: String) -> Result<Document, Box<dyn Error>> {
+        match self {
+            Ok(mut document) => {
+                document.alias = alias;
+                Ok(document)
+            }
+            Err(error) => Err(error),
         }
     }
 }
