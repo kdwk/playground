@@ -480,3 +480,48 @@ where
         Err(error) => eprintln!("{}", error),
     }
 }
+
+pub trait Catch<T> {
+    fn catch<HandleErrorClosure>(
+        self,
+        closure: HandleErrorClosure,
+    ) -> impl FnOnce(T) -> Result<(), Box<dyn Error>>
+    where
+        HandleErrorClosure: FnOnce(&Box<dyn Error>);
+}
+
+// impl Catch for Result<(), Box<dyn Error>> {
+//     fn catch<HandleErrorClosure>(self, closure: HandleErrorClosure) -> Result<(), Box<dyn Error>>
+//     where
+//         HandleErrorClosure: FnOnce(&Box<dyn Error>),
+//     {
+//         match self {
+//             Ok(_) => Ok(()),
+//             Err(error) => {
+//                 closure(&error);
+//                 Err(error)
+//             }
+//         }
+//     }
+// }
+
+impl<Closure, T> Catch<T> for Closure
+where
+    Closure: FnOnce(T) -> Result<(), Box<dyn Error>>,
+{
+    fn catch<HandleErrorClosure>(
+        self,
+        closure: HandleErrorClosure,
+    ) -> impl FnOnce(T) -> Result<(), Box<dyn Error>>
+    where
+        HandleErrorClosure: FnOnce(&Box<dyn Error>),
+    {
+        |d| match self(d) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                closure(&error);
+                Err(error)
+            }
+        }
+    }
+}

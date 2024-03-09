@@ -71,15 +71,17 @@
 
 mod document;
 
-use std::error::Error;
+use std::{error::Error, io::Write};
 
 use document::{
-    with, Create, Document, FileSystemEntity,
+    with, Catch, Create, Document, FileSystemEntity,
     Folder::{Project, User},
-    Mode,
+    Map, Mode,
     Project::{Config, Data},
     User::{Documents, Downloads, Pictures},
 };
+
+use crate::document::DocumentError;
 
 // // These should all be structs provided by gtk-rs
 // enum Orientation {
@@ -178,8 +180,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     //         Ok(())
     //     },
     // );
-    dbg!(User(Pictures(&[])).name());
-    dbg!(Project(Data(&[]).with_id("com", "github.kdwk", "Spidey")).exists());
+    // dbg!(User(Pictures(&[])).name());
+    // dbg!(Project(Data(&[]).with_id("com", "github.kdwk", "Spidey")).exists());
     // with(
     //     &[Document::at(
     //         Project(Data.with_id("com", "github.kdwk", "Spidey")),
@@ -192,5 +194,15 @@ fn main() -> Result<(), Box<dyn Error>> {
     //         Ok(())
     //     },
     // );
+    with(
+        &[Document::at(User(Pictures(&[])), "1.png", Create::No)],
+        (|mut d: Map| {
+            println!("a");
+            d["1.png"].file(Mode::Read)?.write_all(b"buf")?;
+            println!("b");
+            Ok(())
+        })
+        .catch(|error| println!("{:?}", error)),
+    );
     Ok(())
 }
