@@ -204,5 +204,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         })
         .catch(|error| println!("{:?}", error)),
     );
+    let a = Document::at(User(Pictures(&[])), "1.png", Create::No)?.suggest_rename();
+    println!("{}", a);
     Ok(())
 }

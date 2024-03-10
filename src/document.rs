@@ -237,15 +237,65 @@ pub struct Document {
     create_policy: Create,
 }
 
-impl Document {
-    fn setup(mut pathbuf: PathBuf, create: Create) -> Result<PathBuf, Box<dyn Error>> {
-        let name = pathbuf.name();
-        let extension = pathbuf
+fn parse_filepath(pathbuf: PathBuf) -> (String, Option<i64>, Option<String>) {
+    let mut name = pathbuf.name();
+    let extension = match ".".to_string()
+        + pathbuf
             .extension()
             .unwrap_or(OsStr::new(""))
             .to_str()
             .unwrap_or("")
-            .to_string();
+    {
+        extension if extension == "." => None,
+        extension => Some(extension),
+    };
+    if let Some(extension) = &extension {
+        name = match name.clone().strip_suffix(extension.as_str()) {
+            Some(new_name) => new_name.to_string(),
+            None => name,
+        };
+    }
+    let open_bracket_index = (&name).rfind("(");
+    let close_bracket_index = (&name).rfind(")");
+    let mut duplicate_number = None;
+    if let Some(open_bracket_index) = open_bracket_index {
+        if let Some(close_bracket_index) = close_bracket_index {
+            duplicate_number = match name
+                .split_at(open_bracket_index)
+                .1
+                .split_at(close_bracket_index)
+                .0
+                .parse()
+            {
+                Ok(number) => {
+                    name = match name.strip_suffix(format!("({})", number).as_str()) {
+                        Some(new_name) => new_name.to_string(),
+                        None => name,
+                    };
+                    Some(number)
+                }
+                Err(_) => None,
+            }
+        }
+    }
+    (name, duplicate_number, extension)
+}
+
+impl Document {
+    fn setup(
+        mut pathbuf: PathBuf,
+        create: Create,
+        dry_run: bool,
+    ) -> Result<PathBuf, Box<dyn Error>> {
+        let (name, duplicate_number_option, extension_option) = parse_filepath(pathbuf.clone());
+        let mut duplicate_number = 0;
+        let mut extension = String::new();
+        if let Some(number) = duplicate_number_option {
+            duplicate_number = number;
+        }
+        if let Some(ext) = extension_option {
+            extension = ext;
+        }
         match create {
             Create::OnlyIfNotExists => {
                 if let Some(parent_folder) = pathbuf.clone().parent() {
@@ -259,7 +309,7 @@ impl Document {
                         ))?
                     }
                 }
-                if !pathbuf.exists() {
+                if !pathbuf.exists() && !dry_run {
                     OpenOptions::new()
                         .read(false)
                         .write(true)
@@ -279,38 +329,47 @@ impl Document {
                         ))?
                     }
                 }
-                let mut suffix: u32 = 0;
                 while pathbuf.exists() {
-                    suffix += 1;
+                    duplicate_number += 1;
                     let new_filename = name.clone()
                         + "("
-                        + suffix.to_string().as_str()
+                        + duplicate_number.to_string().as_str()
                         + ")"
-                        + if extension.len() > 0 { "." } else { "" }
-                        + extension.as_str();
+                        + if extension.clone().len() > 0 && extension.clone() != "." {
+                            extension.as_str()
+                        } else {
+                            ""
+                        };
                     pathbuf = pathbuf
                         .clone()
                         .parent()
                         .unwrap_or(&Path::new(""))
                         .join(new_filename);
                 }
-                OpenOptions::new()
-                    .read(false)
-                    .write(true)
-                    .create_new(true)
-                    .open(pathbuf.clone())?;
+                if !dry_run {
+                    OpenOptions::new()
+                        .read(false)
+                        .write(true)
+                        .create_new(true)
+                        .open(pathbuf.clone())?;
+                }
             }
             _ => {}
         }
-        if !pathbuf.exists() {
+        if !pathbuf.exists() && !dry_run {
             Err(DocumentError::FileNotFound(pathbuf.path()))?
         }
         Ok(pathbuf)
     }
+    pub fn suggest_rename(&self) -> String {
+        Document::setup(self.pathbuf.clone(), Create::AutoRenameIfExists, true)
+            .unwrap_or(PathBuf::new())
+            .path()
+    }
     pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let mut pathbuf = location.into_pathbuf_result(filename)?;
         let original_name = pathbuf.name();
-        pathbuf = Document::setup(pathbuf, create)?;
+        pathbuf = Document::setup(pathbuf, create, false)?;
         Ok(Self {
             alias: original_name,
             pathbuf,
@@ -319,7 +378,7 @@ impl Document {
     }
     pub fn from_path(path: String, alias: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let mut pathbuf = PathBuf::from(path);
-        pathbuf = Document::setup(pathbuf, create)?;
+        pathbuf = Document::setup(pathbuf, create, false)?;
         Ok(Self {
             alias: alias.to_string(),
             pathbuf,
@@ -352,7 +411,7 @@ impl Document {
         file.write_all(content)?;
         Ok(self)
     }
-    pub fn extension(&mut self) -> String {
+    pub fn extension(self) -> String {
         self.pathbuf
             .extension()
             .unwrap_or(OsStr::new(""))
