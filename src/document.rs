@@ -361,11 +361,11 @@ impl Document {
         }
         Ok(pathbuf)
     }
-    pub fn suggest_rename(&self) -> String {
-        Document::setup(self.pathbuf.clone(), Create::AutoRenameIfExists, true)
-            .unwrap_or(PathBuf::new())
-            .path()
-    }
+    // pub fn suggest_rename(&self) -> String {
+    //     Document::setup(self.pathbuf.clone(), Create::AutoRenameIfExists, true)
+    //         .unwrap_or(PathBuf::new())
+    //         .path()
+    // }
     pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let mut pathbuf = location.into_pathbuf_result(filename)?;
         let original_name = pathbuf.name();
@@ -433,6 +433,33 @@ impl Alias for Result<Document, Box<dyn Error>> {
                 Ok(document)
             }
             Err(error) => Err(error),
+        }
+    }
+}
+
+pub trait Renamable {
+    fn suggest_rename(&self) -> String;
+}
+
+impl Renamable for Result<Document, Box<dyn Error>> {
+    fn suggest_rename(&self) -> String {
+        match self {
+            Ok(document) => {
+                match Document::setup(document.pathbuf.clone(), Create::AutoRenameIfExists, true) {
+                    Ok(new_name) => new_name.path(),
+                    Err(error) => {
+                        eprintln!("{}", error);
+                        "".to_string()
+                    }
+                }
+            }
+            Err(error) => match error.downcast_ref::<DocumentError>() {
+                Some(document_error) => match document_error {
+                    DocumentError::FileNotFound(path) => path.clone(),
+                    _ => "".to_string(),
+                },
+                None => "".to_string(),
+            },
         }
     }
 }

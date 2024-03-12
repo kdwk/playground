@@ -78,6 +78,7 @@ use document::{
     Folder::{Project, User},
     Map, Mode,
     Project::{Config, Data},
+    Renamable,
     User::{Documents, Downloads, Pictures},
 };
 
@@ -204,7 +205,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         })
         .catch(|error| println!("{:?}", error)),
     );
-    let a = Document::at(User(Pictures(&[])), "1.png", Create::No)?.suggest_rename();
-    println!("{}", a);
+    println!(
+        "{}",
+        Document::at(User(Pictures(&[])), "2.png", Create::No).suggest_rename()
+    );
     Ok(())
 }
