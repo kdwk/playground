@@ -536,16 +536,22 @@ impl FileSystemEntity for PathBuf {
 
 pub struct Map(HashMap<String, Document>);
 
-impl Index<&str> for Map {
+impl<'a, Str> Index<Str> for Map
+where
+    Str: ToString,
+{
     type Output = Document;
-    fn index(&self, index: &str) -> &Self::Output {
-        &self.0[index]
+    fn index(&self, index: Str) -> &Self::Output {
+        &self.0[index.to_string().as_str()]
     }
 }
 
-impl IndexMut<&str> for Map {
-    fn index_mut(&mut self, index: &str) -> &mut Self::Output {
-        self.0.get_mut(index).unwrap()
+impl<'a, Str> IndexMut<Str> for Map
+where
+    Str: ToString,
+{
+    fn index_mut(&mut self, index: Str) -> &mut Self::Output {
+        self.0.get_mut(index.to_string().as_str()).unwrap()
     }
 }
 
