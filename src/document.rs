@@ -54,14 +54,14 @@ fn join_all(path: &Path, subdirs: &[&str]) -> PathBuf {
 }
 
 impl<'a> Folder<'a> {
-    fn into_pathbuf_result(&self, filename: &str) -> Result<PathBuf, DocumentError> {
+    fn into_pathbuf_result(&self, filename: impl ToString) -> Result<PathBuf, DocumentError> {
         match self {
             Folder::User(subdir) => match subdir {
                 User::Pictures(subdirs) => {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.picture_dir() {
                             let mut pathbuf = join_all(path, subdirs);
-                            pathbuf = pathbuf.join(filename);
+                            pathbuf = pathbuf.join(filename.to_string());
                             Ok(pathbuf)
                         } else {
                             Err(DocumentError::PicturesDirNotFound)?
@@ -74,7 +74,7 @@ impl<'a> Folder<'a> {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.video_dir() {
                             let mut pathbuf = join_all(path, subdirs);
-                            pathbuf = pathbuf.join(filename);
+                            pathbuf = pathbuf.join(filename.to_string());
                             Ok(pathbuf)
                         } else {
                             Err(DocumentError::VideosDirNotFound)?
@@ -87,7 +87,7 @@ impl<'a> Folder<'a> {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.download_dir() {
                             let mut pathbuf = join_all(path, subdirs);
-                            pathbuf = pathbuf.join(filename);
+                            pathbuf = pathbuf.join(filename.to_string());
                             Ok(pathbuf)
                         } else {
                             Err(DocumentError::DownloadsDirNotFound)?
@@ -100,7 +100,7 @@ impl<'a> Folder<'a> {
                     if let Some(dir) = directories::UserDirs::new() {
                         if let Some(path) = dir.document_dir() {
                             let mut pathbuf = join_all(path, subdirs);
-                            pathbuf = pathbuf.join(filename);
+                            pathbuf = pathbuf.join(filename.to_string());
                             Ok(pathbuf)
                         } else {
                             Err(DocumentError::DocumentsDirNotFound)?
@@ -113,7 +113,7 @@ impl<'a> Folder<'a> {
                     if let Some(dir) = directories::UserDirs::new() {
                         let path = dir.home_dir();
                         let mut pathbuf = join_all(path, subdirs);
-                        pathbuf = pathbuf.join(filename);
+                        pathbuf = pathbuf.join(filename.to_string());
                         Ok(pathbuf)
                     } else {
                         Err(DocumentError::UserDirsNotFound)?
@@ -126,7 +126,7 @@ impl<'a> Folder<'a> {
                         directories::ProjectDirs::from(qualifier, organization, application)
                     {
                         let mut pathbuf = join_all(dir.data_dir(), subdirs);
-                        pathbuf = pathbuf.join(filename);
+                        pathbuf = pathbuf.join(filename.to_string());
                         Ok(pathbuf)
                     } else {
                         Err(DocumentError::ProjectDirsNotFound)?
@@ -137,7 +137,7 @@ impl<'a> Folder<'a> {
                         directories::ProjectDirs::from(qualifier, organization, application)
                     {
                         let mut pathbuf = join_all(dir.config_dir(), subdirs);
-                        pathbuf = pathbuf.join(filename);
+                        pathbuf = pathbuf.join(filename.to_string());
                         Ok(pathbuf)
                     } else {
                         Err(DocumentError::ProjectDirsNotFound)?
@@ -361,8 +361,12 @@ impl Document {
         }
         Ok(pathbuf)
     }
-    pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
-        let mut pathbuf = location.into_pathbuf_result(filename)?;
+    pub fn at(
+        location: Folder,
+        filename: impl ToString,
+        create: Create,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = location.into_pathbuf_result(filename.to_string())?;
         let original_name = pathbuf.name();
         pathbuf = Document::setup(pathbuf, create, false)?;
         Ok(Self {
@@ -371,8 +375,12 @@ impl Document {
             create_policy: create,
         })
     }
-    pub fn from_path(path: String, alias: &str, create: Create) -> Result<Self, Box<dyn Error>> {
-        let mut pathbuf = PathBuf::from(path);
+    pub fn from_path(
+        path: impl ToString,
+        alias: impl ToString,
+        create: Create,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut pathbuf = PathBuf::from(path.to_string());
         pathbuf = Document::setup(pathbuf, create, false)?;
         Ok(Self {
             alias: alias.to_string(),

@@ -69,6 +69,7 @@
 //     // })
 // }
 
+#![allow(unused_imports)]
 mod document;
 
 use std::{error::Error, io::Write};
@@ -201,9 +202,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             Document::at(User(Pictures(&[])), "42-44.png", Create::No),
         ],
         (|d: Map| {
-            println!("a");
+            println!("{}", d["1.png"].name());
             d["42-44.png"].launch_with_default_app()?;
-            println!("b");
             Ok(())
         })
         .catch(|error| println!("{:?}", error)),
