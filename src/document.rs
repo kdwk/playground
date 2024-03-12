@@ -554,7 +554,9 @@ where
                 return;
             }
         };
-        document_map.insert(document.clone().alias, document);
+        if document.clone().alias != "_" {
+            document_map.insert(document.clone().alias, document);
+        }
     }
     match closure(Map(document_map)) {
         Ok(_) => {}

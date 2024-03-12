@@ -82,7 +82,7 @@ use document::{
     User::{Documents, Downloads, Pictures},
 };
 
-use crate::document::DocumentError;
+use crate::document::Alias;
 
 // // These should all be structs provided by gtk-rs
 // enum Orientation {
@@ -196,10 +196,13 @@ fn main() -> Result<(), Box<dyn Error>> {
     //     },
     // );
     with(
-        &[Document::at(User(Pictures(&[])), "1.png", Create::No)],
-        (|mut d: Map| {
+        &[
+            Document::at(User(Pictures(&[])), "1.png", Create::No),
+            Document::at(User(Pictures(&[])), "42-44.png", Create::No),
+        ],
+        (|d: Map| {
             println!("a");
-            d["1.png"].file(Mode::Read)?.write_all(b"buf")?;
+            d["42-44.png"].launch_with_default_app()?;
             println!("b");
             Ok(())
         })
