@@ -361,11 +361,6 @@ impl Document {
         }
         Ok(pathbuf)
     }
-    // pub fn suggest_rename(&self) -> String {
-    //     Document::setup(self.pathbuf.clone(), Create::AutoRenameIfExists, true)
-    //         .unwrap_or(PathBuf::new())
-    //         .path()
-    // }
     pub fn at(location: Folder, filename: &str, create: Create) -> Result<Self, Box<dyn Error>> {
         let mut pathbuf = location.into_pathbuf_result(filename)?;
         let original_name = pathbuf.name();
@@ -575,21 +570,6 @@ pub trait Catch<T> {
     where
         HandleErrorClosure: FnOnce(&Box<dyn Error>);
 }
-
-// impl Catch for Result<(), Box<dyn Error>> {
-//     fn catch<HandleErrorClosure>(self, closure: HandleErrorClosure) -> Result<(), Box<dyn Error>>
-//     where
-//         HandleErrorClosure: FnOnce(&Box<dyn Error>),
-//     {
-//         match self {
-//             Ok(_) => Ok(()),
-//             Err(error) => {
-//                 closure(&error);
-//                 Err(error)
-//             }
-//         }
-//     }
-// }
 
 impl<Closure, T> Catch<T> for Closure
 where
