@@ -203,10 +203,22 @@ fn main() -> Result<(), Box<dyn Error>> {
         ],
         (|d: Map| {
             println!("{}", d["1.png"].name());
-            d["42-44.png"].launch_with_default_app()?;
+            // d["42-44.png"].launch_with_default_app()?;
             Ok(())
         })
         .catch(|error| println!("{:?}", error)),
+    );
+    with(
+        &[Document::at(
+            User(Pictures(&["Across the Spider-verse"])),
+            "thumb0404.png",
+            Create::No,
+        )
+        .alias("pic")],
+        |d| {
+            d["pic"].launch_with_default_app()?;
+            Ok(())
+        },
     );
     println!(
         "{}",
