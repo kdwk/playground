@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 use directories;
+use extend::ext;
 use open;
 use std::collections::HashMap;
 use std::error::Error;
@@ -424,11 +425,8 @@ impl Document {
     }
 }
 
-pub trait Alias {
-    fn alias(self, alias: &str) -> Result<Document, Box<dyn Error>>;
-}
-
-impl Alias for Result<Document, Box<dyn Error>> {
+#[ext(pub)]
+impl Result<Document, Box<dyn Error>> {
     fn alias(self, alias: &str) -> Result<Document, Box<dyn Error>> {
         match self {
             Ok(mut document) => {
@@ -438,13 +436,6 @@ impl Alias for Result<Document, Box<dyn Error>> {
             Err(error) => Err(error),
         }
     }
-}
-
-pub trait Renamable {
-    fn suggest_rename(&self) -> String;
-}
-
-impl Renamable for Result<Document, Box<dyn Error>> {
     fn suggest_rename(&self) -> String {
         match self {
             Ok(document) => {

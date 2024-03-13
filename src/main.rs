@@ -74,16 +74,14 @@ mod document;
 
 use std::{error::Error, io::Write};
 
-use document::{
+use crate::document::{
     with, Catch, Create, Document, FileSystemEntity,
     Folder::{Project, User},
     Map, Mode,
     Project::{Config, Data},
-    Renamable,
+    ResultDocumentBoxErrorExt,
     User::{Documents, Downloads, Pictures},
 };
-
-use crate::document::Alias;
 
 // // These should all be structs provided by gtk-rs
 // enum Orientation {
