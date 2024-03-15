@@ -5,9 +5,9 @@ use open;
 use std::collections::HashMap;
 use std::error::Error;
 use std::ffi::OsStr;
-use std::fmt::Display;
+use std::fmt::{Binary, Display};
 use std::fs::{create_dir_all, File, OpenOptions};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Lines, Write};
 use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
 
@@ -389,7 +389,7 @@ impl Document {
             create_policy: create,
         })
     }
-    fn open_file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
+    fn open_file(&self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         match OpenOptions::new()
             .read(permissions.readable())
             .write(permissions.writable())
@@ -410,10 +410,19 @@ impl Document {
     pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
         self.open_file(permissions)
     }
-    pub fn write(&mut self, content: &[u8]) -> Result<&mut Self, Box<dyn Error>> {
+    pub fn append(&mut self, content: &[u8]) -> Result<&mut Self, Box<dyn Error>> {
         let mut file = self.open_file(Mode::Append)?;
         file.write_all(content)?;
         Ok(self)
+    }
+    pub fn replace_with(&mut self, content: &[u8]) -> Result<&mut Self, Box<dyn Error>> {
+        let mut file = self.open_file(Mode::Replace)?;
+        file.write_all(content)?;
+        Ok(self)
+    }
+    pub fn lines(&self) -> Result<Lines<BufReader<File>>, Box<dyn Error>> {
+        let file = self.open_file(Mode::Read)?;
+        Ok(BufReader::new(file).lines())
     }
     pub fn extension(self) -> String {
         self.pathbuf
@@ -455,6 +464,16 @@ impl Result<Document, Box<dyn Error>> {
                 None => "".to_string(),
             },
         }
+    }
+}
+
+#[ext(pub)]
+impl Lines<BufReader<File>> {
+    fn print(self) -> Result<(), Box<dyn Error>> {
+        for line in self {
+            println!("{}", line?);
+        }
+        Ok(())
     }
 }
 

@@ -77,7 +77,7 @@ use std::{error::Error, io::Write};
 use crate::document::{
     with, Catch, Create, Document, FileSystemEntity,
     Folder::{Project, User},
-    Map, Mode,
+    LinesBufReaderFileExt, Map, Mode,
     Project::{Config, Data},
     ResultDocumentBoxErrorExt,
     User::{Documents, Downloads, Pictures},
@@ -215,6 +215,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         .alias("pic")],
         |d| {
             d["pic"].launch_with_default_app()?;
+            Ok(())
+        },
+    );
+    with(
+        &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
+        |mut d| {
+            d["gdb.txt"].append(b"Welp")?.lines()?.print()?;
             Ok(())
         },
     );
