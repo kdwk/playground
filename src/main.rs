@@ -198,32 +198,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         &[
             Document::at(User(Pictures(&[])), "1.png", Create::No),
             Document::at(User(Pictures(&[])), "42-44.png", Create::No),
+            Document::at(
+                User(Pictures(&["Across the Spider-verse"])),
+                "thumb0404.png",
+                Create::No,
+            )
+            .alias("pic"),
+            Document::at(User(Downloads(&[])), "gdb.txt", Create::No),
         ],
-        (|d: Map| {
+        (|mut d: Map| {
             println!("{}", d["1.png"].name());
-            // d["42-44.png"].launch_with_default_app()?;
+            d["pic"].launch_with_default_app()?;
+            d["gdb.txt"]
+                .append(b"Something\nto be added")?
+                .launch_with_default_app()?
+                .lines()?
+                .print()?;
             Ok(())
         })
         .catch(|error| println!("{:?}", error)),
-    );
-    with(
-        &[Document::at(
-            User(Pictures(&["Across the Spider-verse"])),
-            "thumb0404.png",
-            Create::No,
-        )
-        .alias("pic")],
-        |d| {
-            d["pic"].launch_with_default_app()?;
-            Ok(())
-        },
-    );
-    with(
-        &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
-        |mut d| {
-            d["gdb.txt"].append(b"Welp")?.lines()?.print()?;
-            Ok(())
-        },
     );
     println!(
         "{}",

@@ -400,11 +400,11 @@ impl Document {
             Err(_) => Err(DocumentError::CouldNotOpenFile(self.path()))?,
         }
     }
-    pub fn launch_with_default_app(&self) -> Result<(), Box<dyn Error>> {
+    pub fn launch_with_default_app(&self) -> Result<&Self, Box<dyn Error>> {
         if let Err(_) = open::that_detached(self.path()) {
             Err(DocumentError::CouldNotLaunchFile(self.path()))?
         } else {
-            Ok(())
+            Ok(self)
         }
     }
     pub fn file(&mut self, permissions: Mode) -> Result<File, Box<dyn Error>> {
