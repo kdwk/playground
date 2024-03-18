@@ -191,9 +191,12 @@ fn main() -> Whoops {
     .catch(|error| eprintln!("{error}"))
     .run(());
 
-    attempt(|_| None::<()>)
-        .catch(|error| eprintln!("{error}"))
-        .run(());
+    attempt(|_| {
+        let a: Option<i32> = None?;
+        Some(())
+    })
+    .catch(|error| eprintln!("{error}"))
+    .run(());
 
     Ok(())
 }
