@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::whoops::{Catch, IntoWhoops, NoneError, Whoops};
 use directories;
 use extend::ext;
 use open;
@@ -565,9 +566,10 @@ where
     }
 }
 
-pub fn with<Closure>(documents: &[Result<Document, Box<dyn Error>>], closure: Closure)
+pub fn with<Closure, Return>(documents: &[Result<Document, Box<dyn Error>>], closure: Closure)
 where
-    Closure: FnOnce(Map) -> Result<(), Box<dyn Error>>,
+    Closure: FnOnce(Map) -> Return,
+    Return: IntoWhoops,
 {
     let mut document_map = HashMap::new();
     for document_result in documents {
@@ -582,38 +584,8 @@ where
             document_map.insert(document.clone().alias, document);
         }
     }
-    match closure(Map(document_map)) {
+    match closure(Map(document_map)).into_whoops() {
         Ok(_) => {}
         Err(error) => eprintln!("{}", error),
-    }
-}
-
-pub trait Catch<T> {
-    fn catch<HandleErrorClosure>(
-        self,
-        closure: HandleErrorClosure,
-    ) -> impl FnOnce(T) -> Result<(), Box<dyn Error>>
-    where
-        HandleErrorClosure: FnOnce(&Box<dyn Error>);
-}
-
-impl<Closure, T> Catch<T> for Closure
-where
-    Closure: FnOnce(T) -> Result<(), Box<dyn Error>>,
-{
-    fn catch<HandleErrorClosure>(
-        self,
-        closure: HandleErrorClosure,
-    ) -> impl FnOnce(T) -> Result<(), Box<dyn Error>>
-    where
-        HandleErrorClosure: FnOnce(&Box<dyn Error>),
-    {
-        |d| match self(d) {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                closure(&error);
-                Err(error)
-            }
-        }
     }
 }

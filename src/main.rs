@@ -69,20 +69,6 @@
 //     // })
 // }
 
-#![allow(unused_imports)]
-mod document;
-
-use std::{error::Error, io::Write};
-
-use crate::document::{
-    with, Catch, Create, Document, FileSystemEntity,
-    Folder::{Project, User},
-    LinesBufReaderFileExt, Map, Mode,
-    Project::{Config, Data},
-    ResultDocumentBoxErrorExt,
-    User::{Documents, Downloads, Pictures},
-};
-
 // // These should all be structs provided by gtk-rs
 // enum Orientation {
 //     Vertical,
@@ -143,57 +129,25 @@ use crate::document::{
 //     }
 // }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    // test(&["Gnome", "Hello"]);
-    // Window(Box(
-    //     Orientation::Vertical,
-    //     5,
-    //     vec![
-    //         Button().label("Gnome"),
-    //         Button().label("Label"),
-    //         &Box(
-    //             Orientation::Horizontal,
-    //             5,
-    //             vec![Button().label("What"), Button().label("Where")],
-    //         ),
-    //     ],
-    // ))
-    // .title("Test App");
+#![allow(unused_imports)]
+mod document;
+mod whoops;
 
-    // with(
-    //     &[
-    //         Document::at(User(Pictures(&[])), "1.png", Create::No),
-    //         Document::at(User(Downloads(&[])), "unnamed1.txt", Create::No),
-    //     ],
-    //     |d| {
-    //         println!("{}", d["1.png"].name());
-    //         println!("{}", d["unnamed1.txt"].path());
-    //         d["unnamed1.txt"].launch_with_default_app()?;
-    //         println!("{}", d["1.png"].path());
-    //         Ok(())
-    //     },
-    // );
-    // with(
-    //     &[Document::at(User(Downloads(&[])), "gdb.txt", Create::No)],
-    //     |mut d| {
-    //         d["gdb.txt"].write("\nHello!")?.launch_with_default_app()?;
-    //         Ok(())
-    //     },
-    // );
-    // dbg!(User(Pictures(&[])).name());
-    // dbg!(Project(Data(&[]).with_id("com", "github.kdwk", "Spidey")).exists());
-    // with(
-    //     &[Document::at(
-    //         Project(Data.with_id("com", "github.kdwk", "Spidey")),
-    //         "test.txt",
-    //         Create::OnlyIfNotExists,
-    //     )],
-    //     |d| {
-    //         println!("{}", d["test.txt"].path());
-    //         d["test.txt"].launch_with_default_app()?;
-    //         Ok(())
-    //     },
-    // );
+use std::{error::Error, io::Write};
+
+use crate::{
+    document::{
+        with, Create, Document, FileSystemEntity,
+        Folder::{Project, User},
+        LinesBufReaderFileExt, Map, Mode,
+        Project::{Config, Data},
+        ResultDocumentBoxErrorExt,
+        User::{Documents, Downloads, Pictures},
+    },
+    whoops::{attempt, Catch, IntoWhoops, Run, Whoops},
+};
+
+fn main() -> Whoops {
     with(
         &[
             Document::at(User(Pictures(&[])), "1.png", Create::No),
@@ -206,7 +160,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             .alias("pic"),
             Document::at(User(Downloads(&[])), "gdb.txt", Create::No),
         ],
-        (|mut d: Map| {
+        attempt(|mut d: Map| {
             println!("{}", d["1.png"].name());
             d["pic"].launch_with_default_app()?;
             d["gdb.txt"]
@@ -216,11 +170,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .print()?;
             Ok(())
         })
-        .catch(|error| println!("{:?}", error)),
+        .catch(|error| eprintln!("{:?}", error)),
     );
+
     println!(
         "{}",
         Document::at(User(Pictures(&[])), "2.png", Create::No).suggest_rename()
     );
+
+    attempt(|_| {
+        let doc = Document::at(User(Pictures(&[])), "2.png", Create::No)?;
+        println!("{}", doc.name());
+        Ok(())
+    })
+    .catch(|error| {
+        Document::at(User(Documents(&[])), "error.txt", Create::OnlyIfNotExists)?
+            .append(error.to_string().as_bytes())?;
+        Ok(())
+    })
+    .catch(|error| eprintln!("{error}"))
+    .run(());
+
     Ok(())
 }
