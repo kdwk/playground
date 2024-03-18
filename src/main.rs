@@ -191,5 +191,9 @@ fn main() -> Whoops {
     .catch(|error| eprintln!("{error}"))
     .run(());
 
+    attempt(|_| None::<()>)
+        .catch(|error| eprintln!("{error}"))
+        .run(());
+
     Ok(())
 }
