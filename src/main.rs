@@ -147,7 +147,7 @@ use crate::{
     whoops::{attempt, Catch, IntoWhoops, Run, Whoops},
 };
 
-fn main() -> Whoops {
+fn main() {
     with(
         &[
             Document::at(User(Pictures(&[])), "1.png", Create::No),
@@ -197,6 +197,4 @@ fn main() -> Whoops {
     })
     .catch(|error| eprintln!("{error}"))
     .run(());
-
-    Ok(())
 }

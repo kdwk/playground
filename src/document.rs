@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::whoops::{Catch, IntoWhoops, NoneError, Whoops};
+use crate::whoops::{attempt, Catch, IntoWhoops, NoneError, Run, Whoops};
 use directories;
 use extend::ext;
 use open;
@@ -470,7 +470,7 @@ impl Result<Document, Box<dyn Error>> {
 
 #[ext(pub)]
 impl Lines<BufReader<File>> {
-    fn print(self) -> Result<(), Box<dyn Error>> {
+    fn print(self) -> Whoops {
         for line in self {
             println!("{}", line?);
         }
@@ -584,8 +584,7 @@ where
             document_map.insert(document.clone().alias, document);
         }
     }
-    match closure(Map(document_map)).into_whoops() {
-        Ok(_) => {}
-        Err(error) => eprintln!("{}", error),
-    }
+    attempt(|_| closure(Map(document_map)))
+        .catch(|error| eprintln!("{error}"))
+        .run(());
 }
