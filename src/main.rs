@@ -192,7 +192,7 @@ fn main() {
     .run(());
 
     attempt(|_| {
-        let a: Option<i32> = None?;
+        let a = None?;
         Some(())
     })
     .catch(|error| eprintln!("{error}"))
