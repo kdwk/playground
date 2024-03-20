@@ -133,7 +133,7 @@
 mod document;
 mod whoops;
 
-use std::{error::Error, io::Write};
+use std::{error::Error, fmt::Display, io::Write};
 
 use crate::{
     document::{
@@ -197,4 +197,12 @@ fn main() {
     })
     .catch(|error| eprintln!("{error}"))
     .run(());
+
+    _ = vec!["a", "b"].iter().map(|str| {
+        attempt(|_: ()| {
+            let a = str.find("a")?;
+            Some(())
+        })
+        .catch(|_error| eprintln!("Ha this works"))
+    });
 }

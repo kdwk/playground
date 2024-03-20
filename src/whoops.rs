@@ -44,7 +44,7 @@ impl<T> IntoWhoops for Option<T> {
 
 pub fn attempt<Closure, Arg, Return>(closure: Closure) -> Closure
 where
-    Closure: FnOnce(Arg) -> Return,
+    Closure: FnMut(Arg) -> Return,
     Return: IntoWhoops,
 {
     closure
@@ -54,26 +54,26 @@ pub trait Catch<Arg> {
     fn catch<HandleErrorClosure, HandleErrorClosureReturn>(
         self,
         closure: HandleErrorClosure,
-    ) -> impl FnOnce(Arg) -> Whoops
+    ) -> impl FnMut(Arg) -> Whoops
     where
-        HandleErrorClosure: FnOnce(&Box<dyn Error>) -> HandleErrorClosureReturn,
+        HandleErrorClosure: FnMut(&Box<dyn Error>) -> HandleErrorClosureReturn,
         HandleErrorClosureReturn: IntoWhoops;
 }
 
 impl<Closure, Arg, Return> Catch<Arg> for Closure
 where
-    Closure: FnOnce(Arg) -> Return,
+    Closure: FnMut(Arg) -> Return,
     Return: IntoWhoops,
 {
     fn catch<HandleErrorClosure, HandleErrorClosureReturn>(
-        self,
-        closure: HandleErrorClosure,
-    ) -> impl FnOnce(Arg) -> Whoops
+        mut self,
+        mut closure: HandleErrorClosure,
+    ) -> impl FnMut(Arg) -> Whoops
     where
-        HandleErrorClosure: FnOnce(&Box<dyn Error>) -> HandleErrorClosureReturn,
+        HandleErrorClosure: FnMut(&Box<dyn Error>) -> HandleErrorClosureReturn,
         HandleErrorClosureReturn: IntoWhoops,
     {
-        |arg| match self(arg).into_whoops() {
+        move |arg| match self(arg).into_whoops() {
             Ok(_) => Ok(()),
             Err(error) => {
                 closure(&error);
@@ -89,9 +89,9 @@ pub trait Run<Arg> {
 
 impl<Closure, Arg, Return> Run<Arg> for Closure
 where
-    Closure: FnOnce(Arg) -> Return,
+    Closure: FnMut(Arg) -> Return,
 {
-    fn run(self, arg: Arg) {
+    fn run(mut self, arg: Arg) {
         _ = self(arg);
     }
 }
