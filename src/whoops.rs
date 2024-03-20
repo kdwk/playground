@@ -87,9 +87,9 @@ pub trait Run<Arg> {
     fn run(self, arg: Arg);
 }
 
-impl<WhoopsClosure, Arg, Return> Run<Arg> for WhoopsClosure
+impl<Closure, Arg, Return> Run<Arg> for Closure
 where
-    WhoopsClosure: FnOnce(Arg) -> Return,
+    Closure: FnOnce(Arg) -> Return,
 {
     fn run(self, arg: Arg) {
         _ = self(arg);
