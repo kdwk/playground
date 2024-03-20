@@ -14,14 +14,14 @@ where
 }
 
 pub trait Replicate<Arg: Clone> {
-    fn replicate(self, arg: Arg) -> impl FnMut();
+    fn replicate(self, arg: Arg) -> impl Fn();
 }
 
 impl<Closure, Arg: Clone, Return> Replicate<Arg> for Closure
 where
     Closure: FnOnce(Arg) -> Return + Clone,
 {
-    fn replicate(self, arg: Arg) -> impl FnMut() {
+    fn replicate(self, arg: Arg) -> impl Fn() {
         move || {
             _ = self.clone().run(arg.clone());
         }
