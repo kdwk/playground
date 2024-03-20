@@ -1,5 +1,8 @@
 #![allow(dead_code)]
-use crate::whoops::{attempt, Catch, IntoWhoops, NoneError, Run, Whoops};
+use crate::{
+    recipe::Run,
+    whoops::{attempt, Catch, IntoWhoops, NoneError, Whoops},
+};
 use directories;
 use extend::ext;
 use open;

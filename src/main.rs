@@ -131,9 +131,10 @@
 
 #![allow(unused_imports)]
 mod document;
+mod recipe;
 mod whoops;
 
-use std::{error::Error, fmt::Display, io::Write};
+use std::{error::Error, fmt::Display, io::Write, thread};
 
 use crate::{
     document::{
@@ -144,7 +145,8 @@ use crate::{
         ResultDocumentBoxErrorExt,
         User::{Documents, Downloads, Pictures},
     },
-    whoops::{attempt, Catch, IntoWhoops, Run, Whoops},
+    recipe::{Discard, Replicate, Run},
+    whoops::{attempt, Catch, IntoWhoops, Whoops},
 };
 
 fn main() {
@@ -205,4 +207,17 @@ fn main() {
         })
         .catch(|_error| eprintln!("Ha this works"))
     });
+    attempt(|_| {
+        let d = Document::at(User(Pictures(&[])), "1.png", Create::No)?;
+        thread::spawn(
+            attempt(|d: Document| {
+                println!("{}", d.name());
+            })
+            .replicate(d),
+        )
+        .join()
+        .discard();
+        Ok(())
+    })
+    .run(());
 }

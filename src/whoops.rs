@@ -1,4 +1,4 @@
-use std::{error::Error, fmt::Display};
+use std::{any::Any, error::Error, fmt::Display};
 
 #[derive(Debug, Clone, Copy)]
 pub struct NoneError;
@@ -80,18 +80,5 @@ where
                 Err(error)
             }
         }
-    }
-}
-
-pub trait Run<Arg> {
-    fn run(self, arg: Arg);
-}
-
-impl<Closure, Arg, Return> Run<Arg> for Closure
-where
-    Closure: FnMut(Arg) -> Return,
-{
-    fn run(mut self, arg: Arg) {
-        _ = self(arg);
     }
 }
