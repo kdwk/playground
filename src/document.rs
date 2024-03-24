@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::{
-    recipe::Run,
+    recipe::{Discard, Runnable},
     whoops::{attempt, Catch, IntoWhoops, NoneError, Whoops},
 };
 use directories;
@@ -428,7 +428,7 @@ impl Document {
         let file = self.open_file(Mode::Read)?;
         Ok(BufReader::new(file).lines())
     }
-    pub fn extension(self) -> String {
+    pub fn extension(&self) -> String {
         self.pathbuf
             .extension()
             .unwrap_or(OsStr::new(""))
@@ -589,5 +589,6 @@ where
     }
     attempt(|closure: Closure| closure(Map(document_map.clone())))
         .catch(|error| eprintln!("{error}"))
-        .run(closure);
+        .run(closure)
+        .discard();
 }

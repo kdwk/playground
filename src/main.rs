@@ -134,18 +134,18 @@ mod document;
 mod recipe;
 mod whoops;
 
-use std::{error::Error, fmt::Display, io::Write, thread};
+use std::{error::Error, fmt::Display, io::Write, ops::Sub, thread};
 
 use crate::{
     document::{
         with, Create, Document, FileSystemEntity,
-        Folder::{Project, User},
+        Folder::{self, Project, User},
         LinesBufReaderFileExt, Map, Mode,
         Project::{Config, Data},
         ResultDocumentBoxErrorExt,
         User::{Documents, Downloads, Pictures},
     },
-    recipe::{Discard, Replicate, Run},
+    recipe::{example::test, Discard, Log, Pass, Pipe, Recipe, Runnable, Step},
     whoops::{attempt, Catch, IntoWhoops, Whoops},
 };
 
@@ -191,33 +191,100 @@ fn main() {
         Ok(())
     })
     .catch(|error| eprintln!("{error}"))
-    .run(());
+    .run(())
+    .discard();
 
-    attempt(|_| {
-        let a = None?;
-        Some(())
-    })
-    .catch(|error| eprintln!("{error}"))
-    .run(());
-
-    _ = vec!["a", "b"].iter().map(|str| {
-        attempt(|_: ()| {
-            let a = str.find("a")?;
-            Some(())
+    let ha = String::from("ha");
+    vec!["a", "b", "c"].into_iter().for_each(|str| {
+        attempt(|_| {
+            println!("{ha}");
+            str.find("a")
         })
         .catch(|_error| eprintln!("Ha this works"))
+        .run(())
+        .discard()
     });
+    thread::spawn(
+        attempt(|ha| {
+            println!("{ha}");
+        })
+        .pass(ha.clone()),
+    );
+    println!("{ha}");
     attempt(|_| {
         let d = Document::at(User(Pictures(&[])), "1.png", Create::No)?;
         thread::spawn(
             attempt(|d: Document| {
                 println!("{}", d.name());
             })
-            .replicate(d),
-        )
-        .join()
-        .discard();
+            .pass(d.clone()),
+        );
+        println!("{}", d.extension());
         Ok(())
     })
-    .run(());
+    .run(())
+    .discard();
+
+    attempt(|_: ()| {
+        None?;
+        Some(())
+    })
+    .catch(|error| eprintln!("{error}"))
+    .run(())
+    .discard();
+
+    Document::at(User(Pictures(&[])), "1.png", Create::No)
+        .unwrap()
+        .pipe(|d| {
+            d.name().log();
+            d
+        })
+        .pipe(|d| {
+            d.extension().log();
+            d
+        })
+        .log();
+
+    let num2 = 3;
+    let mut recipe1 = Recipe::initially("stringify", |mut num: i32| {
+        num += num2;
+        num.to_string()
+    })
+    .then("jump", |str| str + "jump")
+    .then("ha", |str| str + "ha");
+    recipe1
+        .replace("jump", |str| str + "jumpyjump")
+        .run(5)
+        .log();
+    Recipe {
+        initial_step: Step::action(
+            "createDoc",
+            |(folder, filename, create): (Folder, &str, Create)| match Document::at(
+                folder, filename, create,
+            ) {
+                Ok(doc) => Some(doc),
+                Err(_) => None,
+            },
+        ),
+        steps: vec![
+            Step::action(
+                "printName",
+                attempt(|d: Option<Document>| {
+                    d.clone()?.name().log();
+                    d
+                }),
+            ),
+            Step::action(
+                "printExtension",
+                attempt(|d: Option<Document>| {
+                    d.clone()?.extension().log();
+                    d
+                }),
+            ),
+        ],
+    }
+    .run((User(Pictures(&[])), "1.png", Create::No))
+    .discard();
+
+    test();
 }
