@@ -19,6 +19,10 @@ impl<'a, Input, Output> Step<'a, Input, Output> {
     }
 }
 
+pub fn identity<Output>() -> impl Runnable<Output, Output> {
+    |input: Output| input
+}
+
 pub struct Recipe<'a, Ingredients, Outcome> {
     pub initial_step: Step<'a, Ingredients, Outcome>,
     pub steps: Vec<Step<'a, Outcome, Outcome>>,
@@ -232,39 +236,44 @@ impl<T> Discard for T {
 pub mod example {
     use std::fmt::{Debug, Display};
 
-    use super::{Log, Pipe, Recipe, Runnable};
+    use super::{identity, Log, Pipe, Recipe, Runnable};
     #[derive(Debug)]
     pub struct BoxInternal(i32, i32, f32);
-    pub struct Box<'a>(Recipe<'a, (i32, i32, f32), BoxInternal>);
+    pub struct Box<'a>(Recipe<'a, (), BoxInternal>);
     impl<'a> Box<'a> {
         fn new() -> Self {
-            Self(Recipe::initially(
-                "new",
-                |(width, height, rotation): (i32, i32, f32)| BoxInternal(width, height, rotation),
-            ))
+            Self(
+                Recipe::initially("new", |_| BoxInternal(0, 0, 0.0))
+                    .then("width", identity())
+                    .then("height", identity())
+                    .then("rotation", identity()),
+            )
         }
-        fn width(self, value: i32) -> Self {
-            Self(self.0.then("setWidth", move |mut b: BoxInternal| {
+        fn width(mut self, value: i32) -> Self {
+            self.0.replace("width", move |mut b: BoxInternal| {
                 b.0 = value;
                 b
-            }))
+            });
+            self
         }
-        fn height(self, value: i32) -> Self {
-            Self(self.0.then("setHeight", move |mut b: BoxInternal| {
+        fn height(mut self, value: i32) -> Self {
+            self.0.replace("height", move |mut b: BoxInternal| {
                 b.1 = value;
                 b
-            }))
+            });
+            self
         }
-        fn rotate(self, degrees: f32) -> Self {
-            Self(self.0.then("setRotation", move |mut b: BoxInternal| {
+        fn rotate(mut self, degrees: f32) -> Self {
+            self.0.replace("rotation", move |mut b: BoxInternal| {
                 b.2 = degrees;
                 b
-            }))
+            });
+            self
         }
     }
     impl<'a> Debug for Box<'a> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let b = self.0.run((0, 0, 0.0));
+            let b = self.0.run(());
             f.pad(format!("{:?}", b).as_str())
         }
     }
