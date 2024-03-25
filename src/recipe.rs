@@ -19,8 +19,8 @@ impl<'a, Input, Output> Step<'a, Input, Output> {
     }
 }
 
-pub fn identity<Output>() -> impl Runnable<Output, Output> {
-    |input: Output| input
+pub fn identity<Input>() -> impl Runnable<Input, Input> {
+    |input: Input| input
 }
 
 pub struct Recipe<'a, Ingredients, Outcome> {
