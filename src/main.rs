@@ -150,141 +150,141 @@ use crate::{
 };
 
 fn main() {
-    // with(
-    //     &[
-    //         Document::at(User(Pictures(&[])), "1.png", Create::No),
-    //         Document::at(User(Pictures(&[])), "42-44.png", Create::No),
-    //         Document::at(
-    //             User(Pictures(&["Across the Spider-verse"])),
-    //             "thumb0404.png",
-    //             Create::No,
-    //         )
-    //         .alias("pic"),
-    //         Document::at(User(Downloads(&[])), "gdb.txt", Create::No),
-    //     ],
-    //     attempt(|mut d: Map| {
-    //         println!("{}", d["1.png"].name());
-    //         d["pic"].launch_with_default_app()?;
-    //         d["gdb.txt"]
-    //             .append(b"Something\nto be added")?
-    //             .launch_with_default_app()?
-    //             .lines()?
-    //             .print()?;
-    //         Ok(())
-    //     })
-    //     .catch(|error| eprintln!("{:?}", error)),
-    // );
+    with(
+        &[
+            Document::at(User(Pictures(&[])), "1.png", Create::No),
+            Document::at(User(Pictures(&[])), "42-44.png", Create::No),
+            Document::at(
+                User(Pictures(&["Across the Spider-verse"])),
+                "thumb0404.png",
+                Create::No,
+            )
+            .alias("pic"),
+            Document::at(User(Downloads(&[])), "gdb.txt", Create::No),
+        ],
+        attempt(|mut d: Map| {
+            println!("{}", d["1.png"].name());
+            d["pic"].launch_with_default_app()?;
+            d["gdb.txt"]
+                .append(b"Something\nto be added")?
+                .launch_with_default_app()?
+                .lines()?
+                .print()?;
+            Ok(())
+        })
+        .catch(|error| eprintln!("{:?}", error)),
+    );
 
-    // println!(
-    //     "{}",
-    //     Document::at(User(Pictures(&[])), "2.png", Create::No).suggest_rename()
-    // );
+    println!(
+        "{}",
+        Document::at(User(Pictures(&[])), "2.png", Create::No).suggest_rename()
+    );
 
-    // attempt(|_| {
-    //     let doc = Document::at(User(Pictures(&[])), "2.png", Create::No)?;
-    //     println!("{}", doc.name());
-    //     Ok(())
-    // })
-    // .catch(|error| {
-    //     Document::at(User(Documents(&[])), "error.txt", Create::OnlyIfNotExists)?
-    //         .append(error.to_string().as_bytes())?;
-    //     Ok(())
-    // })
-    // .catch(|error| eprintln!("{error}"))
-    // .run(())
-    // .discard();
+    attempt(|_| {
+        let doc = Document::at(User(Pictures(&[])), "2.png", Create::No)?;
+        println!("{}", doc.name());
+        Ok(())
+    })
+    .catch(|error| {
+        Document::at(User(Documents(&[])), "error.txt", Create::OnlyIfNotExists)?
+            .append(error.to_string().as_bytes())?;
+        Ok(())
+    })
+    .catch(|error| eprintln!("{error}"))
+    .run(())
+    .discard();
 
-    // let ha = String::from("ha");
-    // vec!["a", "b", "c"].into_iter().for_each(|str| {
-    //     attempt(|_| {
-    //         println!("{ha}");
-    //         str.find("a")
-    //     })
-    //     .catch(|_error| eprintln!("Ha this works"))
-    //     .run(())
-    //     .discard()
-    // });
-    // thread::spawn(
-    //     attempt(|ha| {
-    //         println!("{ha}");
-    //     })
-    //     .pass(ha.clone()),
-    // );
-    // println!("{ha}");
-    // attempt(|_| {
-    //     let d = Document::at(User(Pictures(&[])), "1.png", Create::No)?;
-    //     thread::spawn(
-    //         attempt(|d: Document| {
-    //             println!("{}", d.name());
-    //         })
-    //         .pass(d.clone()),
-    //     );
-    //     println!("{}", d.extension());
-    //     Ok(())
-    // })
-    // .run(())
-    // .discard();
+    let ha = String::from("ha");
+    vec!["a", "b", "c"].into_iter().for_each(|str| {
+        attempt(|_| {
+            println!("{ha}");
+            str.find("a")
+        })
+        .catch(|_error| eprintln!("Ha this works"))
+        .run(())
+        .discard()
+    });
+    thread::spawn(
+        attempt(|ha| {
+            println!("{ha}");
+        })
+        .pass(ha.clone()),
+    );
+    println!("{ha}");
+    attempt(|_| {
+        let d = Document::at(User(Pictures(&[])), "1.png", Create::No)?;
+        thread::spawn(
+            attempt(|d: Document| {
+                println!("{}", d.name());
+            })
+            .pass(d.clone()),
+        );
+        println!("{}", d.extension());
+        Ok(())
+    })
+    .run(())
+    .discard();
 
-    // attempt(|_: ()| {
-    //     None?;
-    //     Some(())
-    // })
-    // .catch(|error| eprintln!("{error}"))
-    // .run(())
-    // .discard();
+    attempt(|_: ()| {
+        None?;
+        Some(())
+    })
+    .catch(|error| eprintln!("{error}"))
+    .run(())
+    .discard();
 
-    // Document::at(User(Pictures(&[])), "1.png", Create::No)
-    //     .unwrap()
-    //     .pipe(|d| {
-    //         d.name().log();
-    //         d
-    //     })
-    //     .pipe(|d| {
-    //         d.extension().log();
-    //         d
-    //     })
-    //     .log();
+    Document::at(User(Pictures(&[])), "1.png", Create::No)
+        .unwrap()
+        .pipe(|d| {
+            d.name().log();
+            d
+        })
+        .pipe(|d| {
+            d.extension().log();
+            d
+        })
+        .log();
 
-    // let num2 = 3;
-    // let mut recipe1 = Recipe::initially("stringify", |mut num: i32| {
-    //     num += num2;
-    //     num.to_string()
-    // })
-    // .then("jump", |str| str + "jump")
-    // .then("ha", |str| str + "ha");
-    // recipe1
-    //     .replace("jump", |str| str + "jumpyjump")
-    //     .run(5)
-    //     .log();
-    // Recipe {
-    //     initial_step: Step::action(
-    //         "createDoc",
-    //         |(folder, filename, create): (Folder, &str, Create)| match Document::at(
-    //             folder, filename, create,
-    //         ) {
-    //             Ok(doc) => Some(doc),
-    //             Err(_) => None,
-    //         },
-    //     ),
-    //     steps: vec![
-    //         Step::action(
-    //             "printName",
-    //             attempt(|d: Option<Document>| {
-    //                 d.clone()?.name().log();
-    //                 d
-    //             }),
-    //         ),
-    //         Step::action(
-    //             "printExtension",
-    //             attempt(|d: Option<Document>| {
-    //                 d.clone()?.extension().log();
-    //                 d
-    //             }),
-    //         ),
-    //     ],
-    // }
-    // .run((User(Pictures(&[])), "1.png", Create::No))
-    // .discard();
+    let num2 = 3;
+    let mut recipe1 = Recipe::initially("stringify", |mut num: i32| {
+        num += num2;
+        num.to_string()
+    })
+    .then("jump", |str| str + "jump")
+    .then("ha", |str| str + "ha");
+    recipe1
+        .replace("jump", |str| str + "jumpyjump")
+        .run(5)
+        .log();
+    Recipe {
+        initial_step: Step::action(
+            "createDoc",
+            |(folder, filename, create): (Folder, &str, Create)| match Document::at(
+                folder, filename, create,
+            ) {
+                Ok(doc) => Some(doc),
+                Err(_) => None,
+            },
+        ),
+        steps: vec![
+            Step::action(
+                "printName",
+                attempt(|d: Option<Document>| {
+                    d.clone()?.name().log();
+                    d
+                }),
+            ),
+            Step::action(
+                "printExtension",
+                attempt(|d: Option<Document>| {
+                    d.clone()?.extension().log();
+                    d
+                }),
+            ),
+        ],
+    }
+    .run((User(Pictures(&[])), "1.png", Create::No))
+    .discard();
 
     test();
 }
