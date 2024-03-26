@@ -1,8 +1,7 @@
-use std::{any::Any, fmt::Debug, marker::PhantomData, ops::Index, slice::Iter};
+use std::{fmt::Debug, slice::Iter, sync::Arc};
 
-use crate::whoops::attempt;
-
-pub struct Step<'a, Input, Output>(String, Box<dyn Runnable<Input, Output> + 'a>);
+#[derive(Clone)]
+pub struct Step<'a, Input, Output>(String, Arc<dyn Runnable<Input, Output> + 'a>);
 
 impl<'a, Input, Output> Runnable<Input, Output> for Step<'a, Input, Output> {
     fn run(&self, arg: Input) -> Output {
@@ -15,7 +14,7 @@ impl<'a, Input, Output> Step<'a, Input, Output> {
     where
         Closure: Runnable<Input, Output> + 'a,
     {
-        Self(alias.to_string(), Box::new(closure))
+        Self(alias.to_string(), Arc::new(closure))
     }
 }
 
@@ -23,6 +22,7 @@ pub fn identity<Input>() -> impl Runnable<Input, Input> {
     |input: Input| input
 }
 
+#[derive(Clone)]
 pub struct Recipe<'a, Ingredients, Outcome> {
     pub initial_step: Step<'a, Ingredients, Outcome>,
     pub steps: Vec<Step<'a, Outcome, Outcome>>,
@@ -46,10 +46,7 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
         self.steps.push(Step::action(alias.to_string(), action));
         self
     }
-    fn replace_one(&mut self, index: usize, step: Step<'a, Outcome, Outcome>) {
-        self.steps[index] = step;
-    }
-    pub fn replace<Closure: Runnable<Outcome, Outcome> + 'a>(
+    pub fn replace_first<Closure: Runnable<Outcome, Outcome> + 'a>(
         &mut self,
         alias: impl ToString,
         action: Closure,
@@ -62,11 +59,11 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
             }
         }
         if let Some(index) = index {
-            self.replace_one(index, Step::action(alias, action));
+            self.steps[index] = Step::action(alias, action);
         }
         self
     }
-    pub fn replace_all<Closure: Runnable<Outcome, Outcome> + 'a + Clone>(
+    pub fn replace<Closure: Runnable<Outcome, Outcome> + 'a + Clone>(
         &mut self,
         alias: impl ToString,
         action: Closure,
@@ -78,10 +75,7 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
             }
         }
         for index in indices {
-            self.replace_one(
-                index,
-                Step::action(alias.to_string().clone(), action.clone()),
-            );
+            self.steps[index] = Step::action(alias.to_string().clone(), action.clone());
         }
         self
     }
@@ -92,7 +86,7 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
         self.initial_step = Step::action(self.initial_step.0.clone(), action);
         self
     }
-    pub fn remove(&mut self, alias: impl ToString) -> &mut Self {
+    pub fn remove_first(&mut self, alias: impl ToString) -> &mut Self {
         let mut index = None;
         for (i, step) in &mut self.steps.iter().enumerate() {
             if step.0 == alias.to_string() {
@@ -105,7 +99,7 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
         }
         self
     }
-    pub fn remove_all(&mut self, alias: impl ToString) -> &mut Self {
+    pub fn remove(&mut self, alias: impl ToString) -> &mut Self {
         let mut indices = vec![];
         for (i, step) in &mut self.steps.iter().enumerate() {
             if step.0 == alias.to_string() {
@@ -117,21 +111,23 @@ impl<'a, Ingredients, Outcome> Recipe<'a, Ingredients, Outcome> {
         }
         self
     }
-    // TODO: requires Step to be Clone
-    // pub fn get(&mut self, alias: impl ToString) -> Step<'a, Outcome, Outcome> {
-    //     let mut index = None;
-    //     for (i, step) in &mut self.steps.iter().enumerate() {
-    //         if step.0 == alias.to_string() {
-    //             index = Some(i);
-    //             break;
-    //         }
-    //     }
-    //     if let Some(index) = index {
-    //         self.steps[index]
-    //     } else {
-    //         Step::action("identity", |input: Outcome| input)
-    //     }
-    // }
+    pub fn get(&self, alias: impl ToString) -> Step<'a, Outcome, Outcome>
+    where
+        Outcome: Clone + 'a,
+    {
+        let mut index = None;
+        for (i, step) in &mut self.steps.iter().enumerate() {
+            if step.0 == alias.to_string() {
+                index = Some(i);
+                break;
+            }
+        }
+        if let Some(index) = index {
+            self.steps[index].clone()
+        } else {
+            Step::action("identity", identity())
+        }
+    }
 }
 
 impl<'a, Ingredients, Outcome> Runnable<Ingredients, Outcome> for Recipe<'a, Ingredients, Outcome> {
@@ -143,25 +139,6 @@ impl<'a, Ingredients, Outcome> Runnable<Ingredients, Outcome> for Recipe<'a, Ing
         intermediate
     }
 }
-
-// impl<'a, Str: ToString, Ingredients, Outcome> Index<Str> for Recipe<'a, Ingredients, Outcome> {
-//     type Output = Step<'a, Outcome, Outcome>;
-//     fn index(&self, index: Str) -> &Self::Output {
-//         let mut i = None;
-//         let step = Step::action(index.to_string().clone(), |input: Outcome| input);
-//         for (j, step) in self.steps.iter().enumerate() {
-//             if step.0 == index.to_string() {
-//                 i = Some(j);
-//                 break;
-//             }
-//         }
-//         if let Some(i) = i {
-//             &self.steps[i]
-//         } else {
-//             &step
-//         }
-//     }
-// }
 
 pub trait Pipe<Closure, Return>
 where
@@ -237,7 +214,7 @@ pub mod example {
     use std::fmt::{Debug, Display};
 
     use super::{identity, Log, Pipe, Recipe, Runnable};
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct BoxInternal(i32, i32, f32);
     pub struct Box<'a>(Recipe<'a, (), BoxInternal>);
     impl<'a> Box<'a> {
@@ -279,6 +256,6 @@ pub mod example {
     }
     pub fn test() {
         Box::new().width(6).height(7).rotate(45.0).log();
-        Box::new().width(6).height(7).log();
+        Box::new().width(6).height(7).log().rotate(86.45).log();
     }
 }
