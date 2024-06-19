@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 directories = "5.0.1"
+enclose = "1.2.0"
 extend = "1.2.0"
 open = "5.0.1"
 # crossbeam = "0.8.4"

@@ -1,8 +1,5 @@
 #![allow(dead_code)]
-use crate::{
-    recipe::{Discard, Runnable},
-    whoops::{attempt, Catch, IntoWhoops, NoneError, Whoops},
-};
+use crate::whoops::{attempt, Catch, IntoWhoops, Whoops};
 use directories;
 use extend::ext;
 use open;
@@ -240,6 +237,12 @@ pub struct Document {
     alias: String,
     pathbuf: PathBuf,
     create_policy: Create,
+}
+
+impl Display for Document {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} at {}", self.name(), self.path())
+    }
 }
 
 fn parse_filepath(pathbuf: PathBuf) -> (String, Option<i64>, Option<String>) {
@@ -587,8 +590,5 @@ where
             document_map.insert(document.clone().alias, document);
         }
     }
-    attempt(|closure: Closure| closure(Map(document_map.clone())))
-        .catch(|error| eprintln!("{error}"))
-        .run(closure)
-        .discard();
+    attempt(|| closure(Map(document_map))).catch(|error| eprintln!("{error}"))
 }
