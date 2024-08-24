@@ -1,15 +1,18 @@
 use std::{error::Error, fmt::Display};
 
-#[derive(Debug, Clone, Copy)]
+/// NoneError: Expected Some(...), got None.
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
 pub struct NoneError;
 
 impl Error for NoneError {
+    /// "NoneError: Expected Some(...), got None."
     fn description(&self) -> &str {
         "NoneError: Expected Some(...), got None."
     }
 }
 
 impl Display for NoneError {
+    /// "NoneError: expected Some(...), got None."
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.pad("NoneError: expected Some(...), got None.")
     }
@@ -45,14 +48,6 @@ impl<T> IntoWhoops for Option<T> {
     }
 }
 
-// pub fn attempt_fn<Closure, Arg, Return>(closure: Closure) -> Closure
-// where
-//     Closure: Fn(Arg) -> Return,
-//     Return: IntoWhoops,
-// {
-//     closure
-// }
-
 pub fn attempt<Closure, Return>(closure: Closure) -> Whoops
 where
     Closure: FnOnce() -> Return,
@@ -62,11 +57,11 @@ where
 }
 
 pub trait Catch {
-    fn catch<HandleErrorClosure: Fn(Box<dyn Error>)>(self, closure: HandleErrorClosure);
+    fn catch<HandleErrorClosure: FnOnce(Box<dyn Error>)>(self, closure: HandleErrorClosure);
 }
 
 impl<T: IntoWhoops> Catch for T {
-    fn catch<HandleErrorClosure: Fn(Box<dyn Error>)>(self, closure: HandleErrorClosure) {
+    fn catch<HandleErrorClosure: FnOnce(Box<dyn Error>)>(self, closure: HandleErrorClosure) {
         match self.into_whoops() {
             Ok(_) => {}
             Err(error) => closure(error),

@@ -130,31 +130,40 @@
 // }
 
 #![allow(unused_imports)]
-mod document;
+mod fruits;
+mod go;
 mod mixture;
 mod recipe;
 mod whoops;
 
-use std::{any::Any, default, error::Error, fmt::Display, io::Write, ops::Sub, sync::Arc, thread};
+use std::{
+    any::Any, default, error::Error, fmt::Display, future::poll_fn, io::Write, ops::Sub,
+    path::PathBuf, sync::Arc, thread, time::Duration,
+};
+
+use documents::prelude::*;
 
 use crate::{
-    document::{
-        with, Create, Document, FileSystemEntity,
-        Folder::{self, Project, User},
-        LinesBufReaderFileExt, Map, Mode,
-        Project::{Config, Data},
-        ResultDocumentBoxErrorExt,
-        User::{Documents, Downloads, Pictures},
-    },
+    fruits::prelude::*,
+    mixture::prelude::*,
     recipe::{example::test, Apply, Discard, Log, Pass, Pipe, Recipe, Runnable, Step},
     whoops::{attempt, Catch, IntoWhoops, Whoops},
 };
 
+use anyhow::Result;
+use chrono::prelude::*;
 use enclose::enclose;
-use mixture::{any, Anything, AnythingExt, MatchType, Mixture, MixtureExt};
+use tokio::{
+    join,
+    runtime::Handle,
+    select,
+    task::{self, JoinHandle},
+    time::sleep,
+};
 
-fn main() {
-    test9();
+#[tokio::main]
+async fn main() {
+    println!("{}", test10().await)
 }
 
 #[derive(Debug)]
@@ -176,7 +185,7 @@ impl A {
 fn test1() {
     with(
         &[
-            Document::at(User(Pictures(&[])), "1.png", Create::No),
+            Document::at(User(Pictures(&[])), "doesnotexist.png", Create::No),
             Document::at(User(Pictures(&[])), "42-44.png", Create::No),
             Document::at(
                 User(Pictures(&["Across the Spider-verse"])),
@@ -200,6 +209,22 @@ fn test1() {
             .catch(|error| eprintln!("{:?}", error))
         },
     );
+}
+
+fn test1a() {
+    let a: &[&dyn FileSystemEntity] = &[
+        &Document::at(User(Pictures(&[""])), "1.png", Create::No),
+        &User(Pictures(&["Across the Spider-verse"])),
+        &Project(Config(&[]).with_id("com", "gutolution", "Gutolution")),
+        &PathBuf::new(),
+    ];
+    for b in a {
+        println!(
+            "{:?} {} exist.",
+            b,
+            if b.exists() { "does" } else { "doesn't" }
+        );
+    }
 }
 
 fn test2() {
@@ -331,16 +356,52 @@ fn test9() {
     b.add("hi");
     b[1].set(A { i: 4 });
     println!("{:?}", b[1].get::<A>());
-    let c = mix!["abc", 2, A { i: 5 }];
+    let c = mix!["abc", User(Pictures(&[])), A { i: 5 }];
     for mut item in c {
-        item.match_type3(
-            |int: &mut i32| {
-                println!("It's an i32! {int}");
-            },
-            |string: &mut &str| {
-                println!("It's an &str! {string}");
-            },
-            |_anything: &mut Anything| {},
-        )
+        item.case::<i32>(|int| println!("It's an i32! {int}"))
+            .case::<&str>(|string| println!("It's an &str! {string}"))
+            .case::<Folder>(|folder| println!("{folder:?}"));
     }
+}
+
+async fn test10() -> String {
+    // go! {
+    //     for _ in 1..10 {
+    //         sleep(Duration::from_millis(500)).await;
+    //         println!("First task: {a}")
+    //     }
+    // }
+    // go! {
+    //     for _ in 1..10 {
+    //         sleep(Duration::from_millis(500)).await;
+    //         println!("Second task: {a}")
+    //     }
+    // }
+    let handle1 = task::spawn(async {
+        for _ in 1..10 {
+            sleep(Duration::from_millis(500)).await;
+            println!("First task: Hello")
+        }
+        format!("First task done at {}", Local::now())
+    });
+    let handle2 = task::spawn(async {
+        sleep(Duration::from_secs(4)).await;
+        format!("Second task done at {}", Local::now())
+    });
+    let (result1, result2) =
+        join!(handle1, handle2).pipe(|(result1, result2)| (result1.unwrap(), result2.unwrap()));
+    result1 + &result2
+}
+
+fn test11<const N: usize>(list: [&dyn std::fmt::Debug; N]) {
+    for item in list {
+        println!("{item:?}");
+    }
+}
+
+fn test12() {
+    let apple1 = Apple {
+        date_of_picking: Local::now(),
+        dimensions: Dimensions::new(5.0, 5.0, 5.0),
+    };
 }

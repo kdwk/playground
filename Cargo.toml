@@ -6,9 +6,13 @@ edition = "2021"
 [build-dependencies]
 
 [dependencies]
+anyhow = "1.0.86"
+chrono = "0.4.38"
 directories = "5.0.1"
+documents = "0.1.1"
 enclose = "1.2.0"
 extend = "1.2.0"
 open = "5.0.1"
+tokio = { version = "1.39.2", features = ["full"] }
 # crossbeam = "0.8.4"
 # gtk4 = "0.7.3"
