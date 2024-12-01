@@ -61,7 +61,7 @@ pub trait AnythingExt<'a> {
     fn try_get<T: 'a>(&self) -> Option<&T>;
     fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T>;
     fn set<T: 'a>(&mut self, value: T);
-    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> &mut Self;
+    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool);
 }
 
 impl<'a> AnythingExt<'a> for Anything<'a> {
@@ -80,11 +80,13 @@ impl<'a> AnythingExt<'a> for Anything<'a> {
     fn set<T: 'a>(&mut self, value: T) {
         *self = any(value);
     }
-    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> &mut Self {
+    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool) {
+        let mut matched = false;
         if let Some(value) = self.try_get_mut::<T>() {
             match_arm(value);
+            matched = true;
         }
-        self
+        (self, matched)
     }
 }
 
@@ -113,6 +115,33 @@ impl<'a, Key: Hash + Eq, Output> HashMap<Key, Anything<'a>> {
         Q: Hash + Eq {
             Some(self.get_mut(k)?.get_mut())
         }
+}
+
+impl<'a> AnythingExt<'a> for (&mut Anything<'a>, bool) {
+    fn get<T: 'a>(&self) -> &T {
+        self.0.get()
+    }
+    fn get_mut<T: 'a>(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+    fn try_get<T: 'a>(&self) -> Option<&T> {
+        self.0.try_get()
+    }
+    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
+        self.0.try_get_mut()
+    }
+    fn set<T: 'a>(&mut self, value: T) {
+        self.0.set(value);
+    }
+    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool) {
+        if !self.1 {
+            if let Some(value) = self.try_get_mut::<T>() {
+                match_arm(value);
+                self.1 = true;
+            }
+        }
+        (self.0, self.1)
+    }
 }
 
 pub trait Number: AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div {}

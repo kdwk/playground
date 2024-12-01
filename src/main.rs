@@ -130,9 +130,11 @@
 // }
 
 #![allow(unused_imports)]
+mod compose;
 mod fruits;
 mod go;
 mod mixture;
+mod object;
 mod recipe;
 mod whoops;
 mod map;
@@ -143,6 +145,10 @@ use std::{
 };
 
 use documents::prelude::*;
+use extend::ext;
+use object::prelude::*;
+use object_derive::{Enum, Object};
+use recipe::identity;
 
 use crate::{
     fruits::prelude::*,
@@ -154,6 +160,8 @@ use crate::{
 use anyhow::Result;
 use chrono::prelude::*;
 use enclose::enclose;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string, to_string_pretty};
 use tokio::{
     join,
     runtime::Handle,
@@ -164,14 +172,14 @@ use tokio::{
 
 #[tokio::main]
 async fn main() {
-    test1();
-    test2();
+    println!("{}", test10().await);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone)]
 struct A {
     i: i32,
 }
+
 impl A {
     fn a1(&mut self) {
         self.i = 1;
@@ -182,6 +190,12 @@ impl A {
     fn c1(&mut self) {
         self.i = 3;
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Enum)]
+enum B {
+    Something,
+    SomethingElse,
 }
 
 fn test1() {
@@ -367,30 +381,18 @@ fn test9() {
 }
 
 async fn test10() -> String {
-    // go! {
-    //     for _ in 1..10 {
-    //         sleep(Duration::from_millis(500)).await;
-    //         println!("First task: {a}")
-    //     }
-    // }
-    // go! {
-    //     for _ in 1..10 {
-    //         sleep(Duration::from_millis(500)).await;
-    //         println!("Second task: {a}")
-    //     }
-    // }
-    let handle1 = task::spawn(async {
+    let result1 = task::spawn(async {
         for _ in 1..10 {
             sleep(Duration::from_millis(500)).await;
             println!("First task: Hello")
         }
         format!("First task done at {}", Local::now())
     });
-    let handle2 = task::spawn(async {
-        sleep(Duration::from_secs(4)).await;
+    let result2 = task::spawn(async {
+        println!("Second task");
         format!("Second task done at {}", Local::now())
     });
-    handle1.await.unwrap() + &handle2.await.unwrap()
+    result1.await.unwrap() + &result2.await.unwrap()
 }
 
 fn test11<const N: usize>(list: [&dyn std::fmt::Debug; N]) {
@@ -408,6 +410,44 @@ fn test12() {
 }
 
 fn test13() {
+    for variant in B::variants() {
+        println!("{variant:?}");
+    }
+    with(
+        &[Document::at(
+            User(Home(&[])),
+            "test_serde",
+            Create::OnlyIfNotExists,
+        )],
+        |mut d| {
+            let a = Apple {
+                date_of_picking: Local.with_ymd_and_hms(2024, 9, 1, 0, 0, 0).unwrap(),
+                dimensions: Dimensions::new(3, 4, 5),
+            };
+            d["test_serde"].replace_with(to_string_pretty(&a).unwrap().as_bytes())?;
+            Ok(())
+        },
+    )
+}
+
+fn test14<'it>(a: impl IntoIterator<Item = &'it dyn FileSystemEntity>) {
+    let a = tokio::spawn(async {
+        sleep(Duration::from_millis(200));
+        4
+    });
+    with(
+        &[Document::at(User(Home(&[])), "test_serde", Create::No)],
+        |d| {
+            let a: Fruit = from_str(d["test_serde"].content()?.as_str())?;
+            println!("{a:?}");
+            println!("{}", a.is_ripe());
+            // println!("{}", a.class_name());
+            Ok(())
+        },
+    )
+}
+
+fn test15() {
     let romania = HashMap::from([
         ("A", vec!["S", "T", "Z"]), 
         ("Z", vec!["A", "O"]),

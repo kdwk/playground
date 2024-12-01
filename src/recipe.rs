@@ -21,7 +21,7 @@ impl<'a, Input, Output> Step<'a, Input, Output> {
     }
 }
 
-pub fn identity<Input>() -> impl Runnable<Input, Input> {
+pub fn identity<Input>() -> impl Fn(Input) -> Input {
     |input: Input| input
 }
 

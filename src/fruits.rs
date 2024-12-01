@@ -1,9 +1,13 @@
+use crate::object::prelude::*;
 use chrono::prelude::*;
+use object_derive::{Enum, Object};
+use serde::{Deserialize, Serialize};
 
 pub mod prelude {
     pub use super::{Dimensions, Fruit, Fruit::Apple, Fruit::Banana, Fruit::Orange, Ripeness};
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Fruit {
     Apple {
         date_of_picking: DateTime<Local>,
@@ -20,7 +24,7 @@ pub enum Fruit {
 }
 
 impl Fruit {
-    fn ripeness(&self) -> Ripeness {
+    pub fn ripeness(&self) -> Ripeness {
         match self {
             Fruit::Apple {
                 date_of_picking,
@@ -45,14 +49,22 @@ impl Fruit {
             }
         }
     }
+    pub fn is_ripe(&self) -> bool {
+        match self.ripeness() {
+            Ripeness::Ripe | Ripeness::Overripe => true,
+            _ => false,
+        }
+    }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Ripeness {
     Unripe,
     Ripe,
     Overripe,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Dimensions {
     x: f64,
     y: f64,
