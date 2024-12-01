@@ -1,4 +1,6 @@
-use std::{any::Any, error::Error, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign}};
+use std::{any::Any, borrow::Borrow, collections::HashMap, hash::Hash, error::Error, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign}};
+
+use extend::ext;
 
 pub mod prelude {
     pub use super::{any, Anything, AnythingExt, Mixture, MixtureExt};
@@ -6,7 +8,7 @@ pub mod prelude {
 
 #[macro_export]
 macro_rules! mix {
-    ( $( $x:expr ),* ) => {
+    ( $( $x:expr ),* $(,)? ) => {
         {
             let mut mixture = Mixture::new();
             $(
@@ -54,31 +56,63 @@ impl<'a> MixtureExt for Mixture<'a> {
 }
 
 pub trait AnythingExt<'a> {
-    fn get<T: 'a>(&mut self) -> &mut T;
-    fn try_get<T: 'a>(&mut self) -> Option<&mut T>;
+    fn get<T: 'a>(&self) -> &T;
+    fn get_mut<T: 'a>(&mut self) -> &mut T;
+    fn try_get<T: 'a>(&self) -> Option<&T>;
+    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T>;
     fn set<T: 'a>(&mut self, value: T);
     fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> &mut Self;
 }
 
 impl<'a> AnythingExt<'a> for Anything<'a> {
-    fn get<T: 'a>(&mut self) -> &mut T {
-        match (*self).downcast_mut::<T>() {
-            Some(value) => value,
-            None => panic!(),
-        }
+    fn get<T: 'a>(&self) -> &T {
+        (*self).downcast_ref().unwrap()
     }
-    fn try_get<T: 'a>(&mut self) -> Option<&mut T> {
-        (*self).downcast_mut::<T>()
+    fn get_mut<T: 'a>(&mut self) -> &mut T {
+        (*self).downcast_mut().unwrap()
+    }
+    fn try_get<T: 'a>(&self) -> Option<&T> {
+        (*self).downcast_ref()
+    }
+    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
+        (*self).downcast_mut()
     }
     fn set<T: 'a>(&mut self, value: T) {
         *self = any(value);
     }
     fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> &mut Self {
-        if let Some(value) = self.try_get::<T>() {
+        if let Some(value) = self.try_get_mut::<T>() {
             match_arm(value);
         }
         self
     }
+}
+
+#[macro_export]
+macro_rules! mixedmap {
+    ($( $x:expr => $y:expr ),* $(,)?) => {
+        {
+            HashMap::from([
+                $(($x, any($y)),)*
+            ])
+        }
+    };
+}
+
+#[ext]
+impl<'a, Key: Hash + Eq, Output> HashMap<Key, Anything<'a>> {
+    fn get_any<Q: ?Sized>(&'a self, k: &Q) -> Option<&'a Output>
+    where
+        Key: Borrow<Q>,
+        Q: Hash + Eq {
+            Some(self.get(k)?.get())
+        }
+    fn get_any_mut<Q: ?Sized>(&'a mut self, k: &Q) -> Option<&'a mut Output>
+    where
+        Key: Borrow<Q>,
+        Q: Hash + Eq {
+            Some(self.get_mut(k)?.get_mut())
+        }
 }
 
 pub trait Number: AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div {}
@@ -93,6 +127,6 @@ mod test {
         x + y
     }
     fn test1() {
-        println!("{}", add(4, 7));
+        println!("{}", add(4, 3));
     }
 }

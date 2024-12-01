@@ -135,10 +135,11 @@ mod go;
 mod mixture;
 mod recipe;
 mod whoops;
+mod map;
 
 use std::{
-    any::Any, default, error::Error, fmt::Display, future::poll_fn, io::Write, ops::Sub,
-    path::PathBuf, sync::Arc, thread, time::Duration,
+    any::Any, collections::HashMap, default, error::Error, fmt::Display, future::poll_fn,
+    io::Write, ops::Sub, path::PathBuf, sync::Arc, thread, time::Duration,
 };
 
 use documents::prelude::*;
@@ -163,7 +164,8 @@ use tokio::{
 
 #[tokio::main]
 async fn main() {
-    println!("{}", test10().await)
+    test1();
+    test2();
 }
 
 #[derive(Debug)]
@@ -388,9 +390,7 @@ async fn test10() -> String {
         sleep(Duration::from_secs(4)).await;
         format!("Second task done at {}", Local::now())
     });
-    let (result1, result2) =
-        join!(handle1, handle2).pipe(|(result1, result2)| (result1.unwrap(), result2.unwrap()));
-    result1 + &result2
+    handle1.await.unwrap() + &handle2.await.unwrap()
 }
 
 fn test11<const N: usize>(list: [&dyn std::fmt::Debug; N]) {
@@ -400,8 +400,34 @@ fn test11<const N: usize>(list: [&dyn std::fmt::Debug; N]) {
 }
 
 fn test12() {
+    let now = Local::now;
     let apple1 = Apple {
-        date_of_picking: Local::now(),
+        date_of_picking: now(),
         dimensions: Dimensions::new(5.0, 5.0, 5.0),
     };
+}
+
+fn test13() {
+    let romania = HashMap::from([
+        ("A", vec!["S", "T", "Z"]), 
+        ("Z", vec!["A", "O"]),
+        ("O", vec!["S", "Z"]),
+        ("T", vec!["A", "L"]),
+        ("L", vec!["M", "T"]),
+        ("M", vec!["D", "L"]),
+        ("D", vec!["C", "M"]),
+    ]);
+    let map = map!{
+        "A" => any(4),
+        "B" => any(vec!["Whee", "Whoops", "Oddwit"]),
+        "C" => any(Some("thing")),
+    };
+    let mut map2 = mixedmap!{
+        "A" => 4,
+        "B" => "Web"
+    };
+    let s = Box::new("A");
+    let s1 = *s;
+    map2.get("A");
+    let b = map2.get_mut("B").unwrap().get::<&str>();
 }

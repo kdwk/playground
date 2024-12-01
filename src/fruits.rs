@@ -54,17 +54,20 @@ pub enum Ripeness {
 }
 
 pub struct Dimensions {
-    x: f32,
-    y: f32,
-    z: f32,
+    x: f64,
+    y: f64,
+    z: f64,
 }
 
 impl Dimensions {
-    pub fn new(x: impl Into<f32>, y: impl Into<f32>, z: impl Into<f32>) -> Self {
+    pub fn new(x: impl Into<f64>, y: impl Into<f64>, z: impl Into<f64>) -> Self {
         Dimensions {
             x: x.into(),
             y: y.into(),
             z: z.into(),
         }
+    }
+    pub const fn new_const(x: f64, y: f64, z: f64) -> Self {
+        Self { x, y, z }
     }
 }
