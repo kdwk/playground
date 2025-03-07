@@ -13,3 +13,19 @@ impl<'a, T: Eq> Tree<'a, T> {
         }
     }
 }
+
+impl<'a, T: Ord> Tree<'a, T> {
+    fn binary_search(&self, target: &T) -> bool {
+        match self {
+            Tree::Leaf(val) => target == val,
+            Tree::Node(tree1, val, tree2) => {
+                target == val
+                    || if val < target {
+                        tree1.binary_search(target)
+                    } else {
+                        tree2.binary_search(target)
+                    }
+            }
+        }
+    }
+}
