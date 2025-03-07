@@ -72,6 +72,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
+    const ZERO: Self = Self::new_const(0., 0., 0.);
     pub fn new(x: impl Into<f64>, y: impl Into<f64>, z: impl Into<f64>) -> Self {
         Dimensions {
             x: x.into(),

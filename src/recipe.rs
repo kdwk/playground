@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use extend::ext;
+
 #[derive(Clone)]
 pub struct Step<'a, Input, Output>(String, Arc<dyn Runnable<Input, Output> + 'a>);
 
@@ -222,6 +224,19 @@ where
     }
 }
 
+#[ext]
+impl<Closure, Arg, Return> Closure
+where
+    Closure: FnMut(Arg) -> Return,
+{
+    fn then<SecondReturn>(
+        mut self,
+        mut with: impl FnMut(Return) -> SecondReturn,
+    ) -> impl FnMut(Arg) -> SecondReturn {
+        move |arg: Arg| with(self(arg))
+    }
+}
+
 pub trait Pass<Arg: Clone> {
     fn pass(self, arg: Arg) -> impl Fn();
 }
@@ -248,7 +263,13 @@ impl<T> Discard for T {
 }
 
 pub mod example {
-    use std::fmt::{Debug, Display};
+    use std::{
+        f32::consts::PI,
+        fmt::{Debug, Display},
+        ops::Add,
+    };
+
+    use crate::{compose, recipe::ClosureExt};
 
     use super::{identity, Apply, Discard, Log, Pipe, Recipe, Runnable};
     #[derive(Debug, PartialEq)]
@@ -291,7 +312,7 @@ pub mod example {
             f.pad(format!("{:?}", b).as_str())
         }
     }
-    pub fn test() {
+    pub fn test1() {
         Boxy::new().width(6).height(7).rotate(45.0).log().discard();
         Boxy::new()
             .width(6)
@@ -305,5 +326,30 @@ pub mod example {
             .replace("width", move |b: BoxInternal| b.apply(|b| b.0 = b.1 * 2))
             .log()
             .discard();
+    }
+
+    #[derive(Debug)]
+    enum Shape {
+        Circle(f32),
+        Rect(f32, f32),
+    }
+    impl Shape {
+        fn square(side: f32) -> Self {
+            Self::Rect(side, side)
+        }
+        fn area(self) -> f32 {
+            match self {
+                Shape::Circle(r) => PI * r.powi(2),
+                Shape::Rect(x, y) => x * y,
+            }
+        }
+    }
+    pub fn test2() {
+        let a = [3.0, 2.18, 3.14, 9.11].map(Shape::Circle.then(Shape::area).then(f32::sqrt));
+        let b = [3.0, 2.18, 3.14, 9.11]
+            .into_iter()
+            .reduce(Add::add)
+            .unwrap_or(0.0);
+        println!("{:?}", a);
     }
 }

@@ -1,9 +1,16 @@
-use std::{any::Any, borrow::Borrow, collections::HashMap, hash::Hash, error::Error, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign}};
+use std::{
+    any::Any,
+    borrow::Borrow,
+    collections::HashMap,
+    error::Error,
+    hash::Hash,
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+};
 
 use extend::ext;
 
 pub mod prelude {
-    pub use super::{any, Anything, AnythingExt, Mixture, MixtureExt};
+    pub use super::{any, Anything, AnythingExt, HashMapKeyAnythingaExt, Mixture, MixtureExt};
 }
 
 #[macro_export]
@@ -101,20 +108,29 @@ macro_rules! mixedmap {
     };
 }
 
-#[ext]
-impl<'a, Key: Hash + Eq, Output> HashMap<Key, Anything<'a>> {
-    fn get_any<Q: ?Sized>(&'a self, k: &Q) -> Option<&'a Output>
+#[ext(pub)]
+impl<'a, Key: Hash + Eq, Q: ?Sized> HashMap<Key, Anything<'a>> {
+    fn get_any<Output>(&'a self, k: &Q) -> &'a Output
     where
         Key: Borrow<Q>,
-        Q: Hash + Eq {
-            Some(self.get(k)?.get())
-        }
-    fn get_any_mut<Q: ?Sized>(&'a mut self, k: &Q) -> Option<&'a mut Output>
+        Q: Hash + Eq,
+    {
+        self.get(&k).unwrap().get()
+    }
+    fn try_get_any<Output>(&'a self, k: &Q) -> Option<&'a Output>
     where
         Key: Borrow<Q>,
-        Q: Hash + Eq {
-            Some(self.get_mut(k)?.get_mut())
-        }
+        Q: Hash + Eq,
+    {
+        Some(self.get(&k)?.get())
+    }
+    fn try_get_any_mut<Output>(&'a mut self, k: &Q) -> Option<&'a mut Output>
+    where
+        Key: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        Some(self.get_mut(&k)?.get_mut())
+    }
 }
 
 impl<'a> AnythingExt<'a> for (&mut Anything<'a>, bool) {
@@ -144,13 +160,19 @@ impl<'a> AnythingExt<'a> for (&mut Anything<'a>, bool) {
     }
 }
 
-pub trait Number: AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div {}
+pub trait Number:
+    AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div
+{
+}
 
-impl<T: AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div> Number for T {}
+impl<T: AddAssign + SubAssign + MulAssign + DivAssign + Sized + Add + Sub + Mul + Div> Number
+    for T
+{
+}
 
 mod test {
-    use std::ops::Add;
     use super::Number;
+    use std::ops::Add;
 
     fn add<Num: Number>(x: Num, y: Num) -> <Num as Add>::Output {
         x + y

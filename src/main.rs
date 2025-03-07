@@ -133,15 +133,30 @@
 mod compose;
 mod fruits;
 mod go;
-mod mixture;
-mod object;
-mod recipe;
-mod whoops;
+mod guard_map;
+mod linked_list;
 mod map;
+mod mixture;
+mod numbers;
+mod object;
+mod quicksort;
+mod recipe;
+mod tree;
+mod whoops;
 
 use std::{
-    any::Any, collections::HashMap, default, error::Error, fmt::Display, future::poll_fn,
-    io::Write, ops::Sub, path::PathBuf, sync::Arc, thread, time::Duration,
+    any::Any,
+    collections::HashMap,
+    default,
+    error::Error,
+    fmt::Display,
+    future::poll_fn,
+    io::Write,
+    ops::Sub,
+    path::PathBuf,
+    sync::Arc,
+    thread,
+    time::{Duration, Instant},
 };
 
 use documents::prelude::*;
@@ -153,8 +168,9 @@ use recipe::identity;
 use crate::{
     fruits::prelude::*,
     mixture::prelude::*,
-    recipe::{example::test, Apply, Discard, Log, Pass, Pipe, Recipe, Runnable, Step},
-    whoops::{attempt, Catch, IntoWhoops, Whoops},
+    quicksort::prelude::*,
+    recipe::{Apply, Discard, Log, Pipe, Recipe, Runnable},
+    whoops::{attempt, Catch},
 };
 
 use anyhow::Result;
@@ -170,12 +186,11 @@ use tokio::{
     time::sleep,
 };
 
-#[tokio::main]
-async fn main() {
-    println!("{}", test10().await);
+fn main() {
+    recipe::example::test2();
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
 struct A {
     i: i32,
 }
@@ -192,7 +207,7 @@ impl A {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Enum)]
+#[derive(Debug, Clone, PartialEq, Enum, Hash, Eq, PartialOrd, Ord)]
 enum B {
     Something,
     SomethingElse,
@@ -424,7 +439,7 @@ fn test13() {
                 date_of_picking: Local.with_ymd_and_hms(2024, 9, 1, 0, 0, 0).unwrap(),
                 dimensions: Dimensions::new(3, 4, 5),
             };
-            d["test_serde"].replace_with(to_string_pretty(&a).unwrap().as_bytes())?;
+            d["test_serde"].replace_with(to_string_pretty(&a)?.as_bytes())?;
             Ok(())
         },
     )
@@ -432,7 +447,7 @@ fn test13() {
 
 fn test14<'it>(a: impl IntoIterator<Item = &'it dyn FileSystemEntity>) {
     let a = tokio::spawn(async {
-        sleep(Duration::from_millis(200));
+        sleep(Duration::from_millis(200)).await;
         4
     });
     with(
@@ -449,7 +464,7 @@ fn test14<'it>(a: impl IntoIterator<Item = &'it dyn FileSystemEntity>) {
 
 fn test15() {
     let romania = HashMap::from([
-        ("A", vec!["S", "T", "Z"]), 
+        ("A", vec!["S", "T", "Z"]),
         ("Z", vec!["A", "O"]),
         ("O", vec!["S", "Z"]),
         ("T", vec!["A", "L"]),
@@ -457,17 +472,17 @@ fn test15() {
         ("M", vec!["D", "L"]),
         ("D", vec!["C", "M"]),
     ]);
-    let map = map!{
+    let map = map! {
         "A" => any(4),
         "B" => any(vec!["Whee", "Whoops", "Oddwit"]),
         "C" => any(Some("thing")),
     };
-    let mut map2 = mixedmap!{
+    let mut map2 = mixedmap! {
         "A" => 4,
-        "B" => "Web"
+        "B" => "Web",
+        "C" => mix!["A".to_string(), Box::new(3), &7]
     };
     let s = Box::new("A");
     let s1 = *s;
-    map2.get("A");
-    let b = map2.get_mut("B").unwrap().get::<&str>();
+    // let a = map2.get_any::<i32>("A");
 }
