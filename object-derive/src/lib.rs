@@ -38,14 +38,3 @@ pub fn derive_enum(input: TokenStream) -> TokenStream {
     };
     expanded.into()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}

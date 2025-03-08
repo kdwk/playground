@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use playground::prelude::*;
+use main::prelude::*;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("primes 1000", |b| {
