@@ -1,11 +1,17 @@
 use std::future::Future;
 
+pub mod prelude {
+    pub use super::{Then, wait_for};
+}
+
+use tokio::task;
+
 #[macro_export]
 macro_rules! go {
-    ( $( $x:expr );* ) => {
+    ( $( $x:expr )* $(;)* ) => {
         task::spawn(async move {
             $($x;)*
-        });
+        })
     };
 }
 
@@ -19,7 +25,7 @@ impl<T, F: Future<Output = T>> Then<T> for F {
     }
 }
 
-fn wait_for<T>(future: impl Future<Output = T>) -> T {
+pub fn wait_for<T>(future: impl Future<Output = T>) -> T {
     tokio::runtime::Builder::new_multi_thread()
         .build()
         .unwrap()

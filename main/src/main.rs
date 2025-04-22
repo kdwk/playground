@@ -130,6 +130,7 @@
 // }
 
 #![allow(unused_imports)]
+mod async_exp;
 mod compose;
 mod fruits;
 mod go;
@@ -170,7 +171,7 @@ use crate::{
     mixture::prelude::*,
     quicksort::prelude::*,
     recipe::{Apply, Discard, Log, Pipe, Recipe, Runnable},
-    whoops::{attempt, Catch},
+    whoops::{Catch, attempt},
 };
 
 use anyhow::Result;
@@ -186,8 +187,9 @@ use tokio::{
     time::sleep,
 };
 
-fn main() {
-    recipe::example::test2();
+#[tokio::main]
+async fn main() {
+    async_exp::test::test2().await;
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]

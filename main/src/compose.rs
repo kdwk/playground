@@ -38,3 +38,12 @@ impl Compose for Rect {
         Rect
     }
 }
+
+#[derive(Debug, PartialEq)]
+struct Custom;
+
+impl Compose for Custom {
+    fn build(self, context: ()) -> impl Compose {
+        Box::builder().child(Rect).build()
+    }
+}
