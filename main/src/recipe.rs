@@ -5,6 +5,12 @@ use std::{
 
 use extend::ext;
 
+pub mod prelude {
+    pub use super::{
+        Apply, ClosureExt, Dbg, Discard, Pass, Pipe, Recipe, Runnable, Step, identity,
+    };
+}
+
 #[derive(Clone)]
 pub struct Step<'a, Input, Output>(String, Arc<dyn Runnable<Input, Output> + 'a>);
 
@@ -197,16 +203,24 @@ where
     }
 }
 
-pub trait Log {
-    fn log(self) -> Self;
+pub trait Dbg {
+    fn debug(self) -> Self;
 }
 
-impl<T> Log for T
-where
-    T: Debug,
-{
-    fn log(self) -> Self {
+impl<T: Debug> Dbg for T {
+    fn debug(self) -> Self {
         println!("{self:?}");
+        self
+    }
+}
+
+pub trait Disp {
+    fn display(self) -> Self;
+}
+
+impl<T: Display> Disp for T {
+    fn display(self) -> Self {
+        println!("{self}");
         self
     }
 }
@@ -224,7 +238,7 @@ where
     }
 }
 
-#[ext]
+#[ext(pub)]
 impl<Closure, Arg, Return> Closure
 where
     Closure: FnMut(Arg) -> Return,
@@ -262,6 +276,10 @@ impl<T> Discard for T {
     }
 }
 
+pub fn curried(a: i32) -> impl Fn(i32) -> Box<dyn Fn(i32) -> i32> {
+    move |b| Box::new(move |c| a * b * c)
+}
+
 pub mod example {
     use std::{
         f32::consts::PI,
@@ -269,9 +287,9 @@ pub mod example {
         ops::Add,
     };
 
-    use crate::{compose, recipe::ClosureExt};
+    use crate::recipe::ClosureExt;
 
-    use super::{identity, Apply, Discard, Log, Pipe, Recipe, Runnable};
+    use super::{Apply, Dbg, Discard, Disp, Pipe, Recipe, Runnable, curried, identity};
     #[derive(Debug, PartialEq)]
     pub struct BoxInternal(i32, i32, f32);
     pub struct Boxy<'a>(Recipe<'a, (), BoxInternal>);
@@ -313,18 +331,23 @@ pub mod example {
         }
     }
     pub fn test1() {
-        Boxy::new().width(6).height(7).rotate(45.0).log().discard();
         Boxy::new()
             .width(6)
             .height(7)
-            .log()
+            .rotate(45.0)
+            .debug()
+            .discard();
+        Boxy::new()
+            .width(6)
+            .height(7)
+            .debug()
             .rotate(86.45)
-            .log()
+            .debug()
             .discard();
         Boxy::new()
             .0
             .replace("width", move |b: BoxInternal| b.apply(|b| b.0 = b.1 * 2))
-            .log()
+            .debug()
             .discard();
     }
 
@@ -351,5 +374,11 @@ pub mod example {
             .reduce(Add::add)
             .unwrap_or(0.0);
         println!("{:?}", a);
+    }
+
+    pub fn test3() {
+        let eight_times = curried(2)(4);
+        eight_times(4).display();
+        eight_times(3).display();
     }
 }

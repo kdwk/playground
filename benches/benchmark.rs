@@ -1,8 +1,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use main::prelude::*;
 
-fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("quicksort 1000", |b| {
+fn primes_benchmark(c: &mut Criterion) {
+    c.bench_function("primes 1000", |b| {
         b.iter(|| {
             quicksort(vec![
                 573, 895, 755, 604, 802, 861, 929, 681, 78, 942, 54, 558, 569, 894, 165, 518, 472,
@@ -70,5 +70,14 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, criterion_benchmark);
+fn arithmetic_benchmark(c: &mut Criterion) {
+    c.bench_function("find solution", |b| {
+        b.iter(|| {
+            find_combination(&[1, 3, 7, 10, 25, 50], 765);
+        });
+    });
+}
+
+// criterion_group!(benches, primes_benchmark);
+criterion_group!(benches, arithmetic_benchmark);
 criterion_main!(benches);

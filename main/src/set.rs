@@ -1,8 +1,8 @@
 #[macro_export]
-macro_rules! map {
+macro_rules! set {
     ($( $x:expr => $y:expr ),* $(,)?) => {
         {
-            HashMap::from([
+            HashSet::from([
                 $(($x, $y),)*
             ])
         }

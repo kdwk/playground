@@ -130,6 +130,7 @@
 // }
 
 #![allow(unused_imports)]
+mod arithmetic;
 mod async_exp;
 mod compose;
 mod fruits;
@@ -142,8 +143,10 @@ mod numbers;
 mod object;
 mod quicksort;
 mod recipe;
+mod set;
 mod tree;
 mod whoops;
+mod wrap;
 
 use std::{
     any::Any,
@@ -167,10 +170,11 @@ use object_derive::{Enum, Object};
 use recipe::identity;
 
 use crate::{
+    arithmetic::prelude::*,
     fruits::prelude::*,
     mixture::prelude::*,
     quicksort::prelude::*,
-    recipe::{Apply, Discard, Log, Pipe, Recipe, Runnable},
+    recipe::{Apply, Dbg, Discard, Disp, Pipe, Recipe, Runnable},
     whoops::{Catch, attempt},
 };
 
@@ -189,7 +193,7 @@ use tokio::{
 
 #[tokio::main]
 async fn main() {
-    async_exp::test::test2().await;
+    test18();
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
@@ -313,7 +317,7 @@ fn test5() {
         let d = Document::at(User(Pictures(&[])), "1.png", Create::No)?;
         thread::spawn(enclose!(
             (d) move || {
-                d.name().log();
+                d.name().display();
             }
         ));
         println!("{}", d.extension());
@@ -331,14 +335,14 @@ fn test6() {
     Document::at(User(Pictures(&[])), "1.png", Create::No)
         .unwrap()
         .pipe(|d| {
-            d.name().log();
+            d.name().display();
             d
         })
         .pipe(|d| {
-            d.extension().log();
+            d.extension().display();
             d
         })
-        .log();
+        .display();
 }
 fn test7() {
     let num2 = 3;
@@ -351,7 +355,7 @@ fn test7() {
     recipe1
         .replace("jump", |str| str + "jumpyjump")
         .run(5)
-        .log();
+        .display();
     Recipe::initially(
         "createDoc",
         |(folder, filename, create)| match Document::at(folder, filename, create) {
@@ -360,11 +364,11 @@ fn test7() {
         },
     )
     .then("printName", |d: Option<Document>| {
-        attempt(|| Some(d.clone()?.name().log())).discard();
+        attempt(|| Some(d.clone()?.name().display())).discard();
         d
     })
     .then("printExtension", |d: Option<Document>| {
-        attempt(|| Some(d.clone()?.extension().log())).discard();
+        attempt(|| Some(d.clone()?.extension().display())).discard();
         d
     })
     .run((User(Pictures(&[])), "1.png", Create::No))
@@ -487,4 +491,26 @@ fn test15() {
     let s = Box::new("A");
     let s1 = *s;
     // let a = map2.get_any::<i32>("A");
+}
+
+fn test16() {
+    [Some(3), Some(4), None].iter().for_each(|i| {
+        if let Some(i) = i {
+            println!("{i}");
+        }
+    });
+    test17([
+        &Document::at(User(Downloads(&[])), "input.txt", Create::No),
+        &PathBuf::new(),
+    ]);
+}
+
+fn test17<const N: usize>(docs: [&dyn FileSystemEntity; N]) {
+    docs.into_iter().for_each(|d| {
+        println!("{}", d.path());
+    });
+}
+
+fn test18() {
+    println!("{:?}", find_combination(&[1, 3, 7, 10, 25, 50], 765));
 }

@@ -1,5 +1,11 @@
 use std::{error::Error, fmt::Display};
 
+pub mod prelude {
+    pub use super::{Catch, IntoOpt, IntoWhoops, NoneError, OK, Whoops, attempt};
+}
+
+pub const OK: Whoops = Ok(());
+
 /// NoneError: Expected Some(...), got None.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Default)]
 pub struct NoneError;
@@ -44,6 +50,25 @@ impl<T> IntoWhoops for Option<T> {
         match self {
             Some(_) => Ok(()),
             None => Err(NoneError)?,
+        }
+    }
+}
+
+pub trait IntoOpt<T> {
+    fn into_opt(self) -> Option<T>;
+}
+
+impl<T> IntoOpt<T> for Option<T> {
+    fn into_opt(self) -> Option<T> {
+        self
+    }
+}
+
+impl<T, E> IntoOpt<T> for Result<T, E> {
+    fn into_opt(self) -> Option<T> {
+        match self {
+            Ok(val) => Some(val),
+            Err(_) => None,
         }
     }
 }
