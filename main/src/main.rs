@@ -144,6 +144,7 @@ mod quicksort;
 mod recipe;
 mod tree;
 mod whoops;
+mod react;
 
 use std::{
     any::Any,

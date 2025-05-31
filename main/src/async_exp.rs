@@ -1,6 +1,6 @@
-use std::time::Duration;
+use std::{f32::consts::PI, time::Duration};
 
-use tokio::time::sleep;
+use tokio::{task::spawn as go, time::sleep};
 
 pub mod prelude {
     pub use super::wait;
@@ -8,6 +8,23 @@ pub mod prelude {
 
 pub async fn wait(secs: u64) {
     sleep(Duration::from_secs(secs)).await;
+}
+
+pub async fn some_future() -> impl Future {
+    async { wait(3).await }
+}
+
+pub async fn test() {
+    let mut a: Vec<&dyn Future<Output = i32>> = vec![];
+    a.push(&async {
+        wait(4).await;
+        5
+    });
+    a.push(&async { 6 });
+    let mut b: &dyn Future<Output = i32>;
+    for i in 0..10 {
+        b = &async { 5 }
+    }
 }
 
 pub mod test {
@@ -37,5 +54,6 @@ pub mod test {
     }
     pub async fn test3() {
         let _ = go(async {});
+        let a = 2;
     }
 }

@@ -1,31 +1,35 @@
-enum Tree<'a, T: Eq> {
-    Leaf(T),
+enum BinaryTree<'a, T> {
+    Leaf(Option<T>),
     Node(&'a Self, T, &'a Self),
 }
 
-impl<'a, T: Eq> Tree<'a, T> {
-    fn contains(&self, target: &T) -> bool {
-        match self {
-            Tree::Leaf(val) => target == val,
-            Tree::Node(tree1, val, tree2) => {
-                target == val || tree1.contains(target) || tree2.contains(target)
-            }
-        }
-    }
-}
+use BinaryTree::*;
 
-impl<'a, T: Ord> Tree<'a, T> {
-    fn binary_search(&self, target: &T) -> bool {
+impl<'a, T: PartialOrd> BinaryTree<'a, T> {
+    fn contains(&self, target: Option<&T>) -> bool {
         match self {
-            Tree::Leaf(val) => target == val,
-            Tree::Node(tree1, val, tree2) => {
-                target == val
-                    || if val < target {
-                        tree1.binary_search(target)
+            Leaf(val) => target == val.as_ref(),
+            Node(tree1, val, tree2) => {
+                target == Some(val)
+                    || if Some(val) < target {
+                        tree1.contains(target)
                     } else {
-                        tree2.binary_search(target)
+                        tree2.contains(target)
                     }
             }
         }
+    }
+    fn insert(&'a mut self, item: T) {
+        // match self {
+        //     Leaf(None) => *self = Leaf(Some(item)),
+        //     Leaf(Some(val)) => {
+        //         if item < *val {
+        //             *self = Node(&Leaf(Some(item)), *val, &Leaf(None));
+        //         } else if item > *val {
+        //             *self = Node(&Leaf(None), *val, &Leaf(Some(item)))
+        //         }
+        //     }
+        //     Node(binary_tree, _, binary_tree1) => todo!(),
+        // }
     }
 }
