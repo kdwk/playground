@@ -1,70 +1,79 @@
-use std::ops::Index;
-
-use extend::ext;
-
-#[ext]
-impl<T> Vec<T> {
-    #[inline]
-    fn last_index(&self) -> usize {
-        self.len() - 1
-    }
+pub mod prelude {
+    pub use super::{Cons, Empty, List, cons};
 }
 
-struct Node<T> {
-    data: T,
-    next: Option<usize>,
+pub enum List<T> {
+    Cons(T, Box<List<T>>),
+    Empty,
 }
 
-impl<T> Node<T> {
-    fn new(data: T) -> Self {
-        Self { data, next: None }
-    }
-}
-
-struct LinkedList<T> {
-    len: usize,
-    front: Option<usize>,
-    end: Option<usize>,
-    nodes: Vec<Option<Node<T>>>,
-}
-
-impl<T> LinkedList<T> {
-    fn new() -> Self {
-        Self {
-            len: 0,
-            front: None,
-            end: None,
-            nodes: vec![],
+impl<T> List<T> {
+    pub fn len(&self) -> usize {
+        match self {
+            Cons(_, list) => 1 + list.len(),
+            Empty => 0,
         }
     }
-    fn len(&self) -> usize {
-        self.len
-    }
-    fn push(&mut self, data: T) {
-        self.nodes.push(Some(Node::new(data)));
-        let index = self.nodes.last_index();
-        if self.front.is_none() {
-            self.front = Some(index);
+    pub fn append(self, elem: T) -> Self {
+        match self {
+            Cons(x, list) => cons(x, list.append(elem)),
+            Empty => cons(elem, Empty)
         }
-        if let Some(orig_last_index) = self.end {
-            if let Some(node) = &mut self.nodes[orig_last_index] {
-                node.next = Some(index);
-                self.len += 1;
-            }
-        }
-        self.end = Some(index);
     }
-    // fn pop(&mut self) -> Option<T> {
-    //     let last_node = self.nodes[self.end?];
-
-    // }
+    pub fn map<R>(&self, f: impl Fn(&T) -> R) -> List<R> {
+        match self {
+            Cons(elem, others) => cons(f(elem), others.map(f)),
+            Empty => Empty
+        }
+    }
+    pub fn take(self, num: usize) -> List<T> {
+        match (num, self) {
+            (0, Cons(elem, others)) => cons(elem, Empty),
+            (_, Cons(_, others)) => others.take(num - 1),
+            (_, Empty) => Empty
+        }
+    }
+    pub fn at(&self, index: usize) -> &T {
+        match (index, self) {
+            (0, Cons(x, _)) => x,
+            (i, Cons(_, others)) => others.at(i - 1),
+            (_, Empty) => panic!("Index out of range")
+        }
+    }
 }
 
-// impl<T> Index<usize> for LinkedList<T> {
-//     type Output = T;
-//     fn index(&self, index: usize) -> &Self::Output {
-//         assert!(index < self.len());
-//         let node = self.nodes[self.end.unwrap()];
-//         for i in 0..index {}
-//     }
-// }
+pub use List::{Cons, Empty};
+
+pub fn cons<T>(elem: T, list: List<T>) -> List<T> {
+    Cons(elem, Box::new(list))
+}
+
+pub mod test {
+    use crate::go::Then;
+    use crate::recipe::{Discard, Log};
+    use super::{Cons, Empty, List, cons};
+
+    struct A {
+        string: String
+    }
+
+    impl A {
+        fn new() -> Self {
+            Self {string: "bum".to_string() }
+        }
+    }
+
+    pub fn test1() {
+        let a = cons(1, cons(2, Empty));
+        let a = a.append(3);
+        let b= a.map(|i| i * 2);
+        println!("Len: {}", a.len());
+        b.map(|i| println!("{i}"));
+        println!("At 2: {}", b.at(2));
+    }
+    pub fn test2() {
+        let a = cons(A::new(), cons(A::new(), Empty));
+        let b = a.map(|e| e.string.clone() + "dee").take(1);
+        b.map(|e| e.log().discard());
+    }
+}

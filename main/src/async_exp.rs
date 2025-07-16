@@ -28,12 +28,19 @@ pub async fn test() {
 }
 
 pub mod test {
+    use std::sync::Arc;
     use std::time::Duration;
 
     use crate::recipe::Discard;
 
     use super::prelude::*;
-    use tokio::{task::spawn as go, time::sleep};
+    use tokio::{task::spawn_local as go, time::sleep};
+    use tokio::sync::Mutex;
+
+    #[derive(Clone)]
+    struct A {
+        i: String
+    }
 
     pub async fn test1() {
         let future = go(async { wait(5) });
@@ -53,7 +60,17 @@ pub mod test {
         future.await.discard();
     }
     pub async fn test3() {
-        let _ = go(async {});
-        let a = 2;
+        let mut a = A {
+            i: "hi".to_string()
+        };
+        let future = go({
+            let a = a.clone();
+            async move {
+                sleep(Duration::from_secs(5)).await;
+                a.i + "ya"
+            }
+        });
+        a.i = future.await.unwrap();
+        println!("{}", a.i);
     }
 }

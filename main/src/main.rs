@@ -141,10 +141,10 @@ mod mixture;
 mod numbers;
 mod object;
 mod quicksort;
+mod react;
 mod recipe;
 mod tree;
 mod whoops;
-mod react;
 
 use std::{
     any::Any,
@@ -180,6 +180,7 @@ use chrono::prelude::*;
 use enclose::enclose;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, to_string_pretty};
+use tokio::task::LocalSet;
 use tokio::{
     join,
     runtime::Handle,
@@ -188,9 +189,14 @@ use tokio::{
     time::sleep,
 };
 
-#[tokio::main]
+async fn run_local<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
+    LocalSet::new().run_until(f).await
+}
+
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
-    async_exp::test::test2().await;
+    // run_local(async_exp::test::test3()).await.discard();
+    linked_list::test::test1();
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
@@ -488,4 +494,13 @@ fn test15() {
     let s = Box::new("A");
     let s1 = *s;
     // let a = map2.get_any::<i32>("A");
+}
+
+fn test16() {
+    let thing = Some("thing");
+    if let Some(thing) = thing
+        && thing == "thing"
+    {
+        println!("true");
+    }
 }
