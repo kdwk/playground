@@ -196,7 +196,7 @@ async fn run_local<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     // run_local(async_exp::test::test3()).await.discard();
-    linked_list::test::test1();
+    linked_list::test::test2();
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]

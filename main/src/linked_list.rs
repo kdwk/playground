@@ -2,9 +2,46 @@ pub mod prelude {
     pub use super::{Cons, Empty, List, cons};
 }
 
+use std::ops::{Index, IndexMut};
+use replace_with::replace_with_or_abort;
+
 pub enum List<T> {
     Cons(T, Box<List<T>>),
     Empty,
+}
+
+impl<T> IntoIterator for List<T> {
+    type Item = T;
+    type IntoIter = ListIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Cons(elem, others) => ListIter::Cons(Some(elem), others),
+            Empty => ListIter::Empty
+        }
+    }
+}
+
+pub enum ListIter<T> {
+    Cons(Option<T>, Box<List<T>>),
+    Empty
+}
+
+impl<T> Iterator for ListIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ListIter::Cons(elem, others) => {
+                let ret = elem.take().unwrap();
+                replace_with_or_abort(self, |this| match this {
+                    ListIter::Cons(_, others) => others.into_iter(),
+                    ListIter::Empty => unreachable!()
+                });
+                Some(ret)
+            }
+            ListIter::Empty => None
+        }
+    }
 }
 
 impl<T> List<T> {
@@ -20,23 +57,25 @@ impl<T> List<T> {
             Empty => cons(elem, Empty)
         }
     }
-    pub fn map<R>(&self, f: impl Fn(&T) -> R) -> List<R> {
-        match self {
-            Cons(elem, others) => cons(f(elem), others.map(f)),
-            Empty => Empty
-        }
-    }
-    pub fn take(self, num: usize) -> List<T> {
-        match (num, self) {
-            (0, Cons(elem, others)) => cons(elem, Empty),
-            (_, Cons(_, others)) => others.take(num - 1),
-            (_, Empty) => Empty
-        }
-    }
-    pub fn at(&self, index: usize) -> &T {
+}
+
+impl<T> Index<usize> for List<T> {
+    type Output = T;
+
+    fn index(&self, index: usize) -> &Self::Output {
         match (index, self) {
-            (0, Cons(x, _)) => x,
-            (i, Cons(_, others)) => others.at(i - 1),
+            (0, Cons(elem, _)) => elem,
+            (n, Cons(_, others)) => others.index(n - 1),
+            (_, Empty) => panic!("Index out of range")
+        }
+    }
+}
+
+impl<T> IndexMut<usize> for List<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        match (index, self) {
+            (0, Cons(elem, _)) => elem,
+            (n, Cons(_, others)) => others.index_mut(n - 1),
             (_, Empty) => panic!("Index out of range")
         }
     }
@@ -64,16 +103,13 @@ pub mod test {
     }
 
     pub fn test1() {
-        let a = cons(1, cons(2, Empty));
-        let a = a.append(3);
-        let b= a.map(|i| i * 2);
-        println!("Len: {}", a.len());
-        b.map(|i| println!("{i}"));
-        println!("At 2: {}", b.at(2));
+        let a = cons(1, cons(2, cons(3, Empty)));
+        a.into_iter().for_each(|i| println!("{i}"));
     }
     pub fn test2() {
-        let a = cons(A::new(), cons(A::new(), Empty));
-        let b = a.map(|e| e.string.clone() + "dee").take(1);
-        b.map(|e| e.log().discard());
+        let mut a = cons(1, cons(2, cons(3, Empty)));
+        println!("a at 2: {}", a[2]);
+        a[2] = 4;
+        println!("a at 2: {}", a[2]);
     }
 }
