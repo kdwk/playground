@@ -5,6 +5,12 @@ use std::{
 
 use extend::ext;
 
+pub mod prelude {
+    pub use super::{
+        Apply, ClosureExt, Discard, Log, Pass, Pipe, Recipe, Runnable, Step, identity,
+    };
+}
+
 #[derive(Clone)]
 pub struct Step<'a, Input, Output>(String, Arc<dyn Runnable<Input, Output> + 'a>);
 
@@ -224,7 +230,7 @@ where
     }
 }
 
-#[ext]
+#[ext(pub)]
 impl<Closure, Arg, Return> Closure
 where
     Closure: FnMut(Arg) -> Return,
@@ -269,9 +275,9 @@ pub mod example {
         ops::Add,
     };
 
-    use crate::{compose, recipe::ClosureExt};
+    use crate::recipe::ClosureExt;
 
-    use super::{identity, Apply, Discard, Log, Pipe, Recipe, Runnable};
+    use super::{Apply, Discard, Log, Pipe, Recipe, Runnable, identity};
     #[derive(Debug, PartialEq)]
     pub struct BoxInternal(i32, i32, f32);
     pub struct Boxy<'a>(Recipe<'a, (), BoxInternal>);

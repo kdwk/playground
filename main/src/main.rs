@@ -141,7 +141,6 @@ mod mixture;
 mod numbers;
 mod object;
 mod quicksort;
-mod react;
 mod recipe;
 mod tree;
 mod whoops;
@@ -180,23 +179,31 @@ use chrono::prelude::*;
 use enclose::enclose;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, to_string, to_string_pretty};
-use tokio::task::LocalSet;
 use tokio::{
     join,
     runtime::Handle,
     select,
-    task::{self, JoinHandle},
+    task::{self, JoinHandle, LocalSet},
     time::sleep,
 };
 
-async fn run_local<T: 'static>(f: impl Future<Output = T> + 'static) -> T {
-    LocalSet::new().run_until(f).await
+// use react::prelude::*;
+
+async fn run_local<T>(future: impl Future<Output = T>) -> T {
+    let local_set = LocalSet::new();
+    local_set.run_until(future).await
 }
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
-    // run_local(async_exp::test::test3()).await.discard();
+async fn main() -> Result<(), anyhow::Error> {
+    // run_local(async {
+    //     async_exp::test::test8().await.discard();
+    //     Ok(())
+    // })
+    // .await
+    // react::test::test().await;
     linked_list::test::test2();
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
@@ -496,11 +503,11 @@ fn test15() {
     // let a = map2.get_any::<i32>("A");
 }
 
-fn test16() {
-    let thing = Some("thing");
-    if let Some(thing) = thing
-        && thing == "thing"
-    {
-        println!("true");
-    }
-}
+// fn test16() {
+//     let thing = Some("thing");
+//     if let Some(thing) = thing
+//         && thing == "thing"
+//     {
+//         println!("true");
+//     }
+// }
