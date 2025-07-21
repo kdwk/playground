@@ -10,7 +10,7 @@ use std::{
 use extend::ext;
 
 pub mod prelude {
-    pub use super::{any, Anything, AnythingExt, HashMapKeyAnythingaExt, Mixture, MixtureExt};
+    pub use super::{Anything, AnythingExt, HashMapKeyAnythingaExt, Mixture, MixtureExt, any};
 }
 
 #[macro_export]

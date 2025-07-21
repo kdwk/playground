@@ -1,5 +1,5 @@
 pub mod prelude {
-    pub use super::{map1, Location, Map};
+    pub use super::{Location, Map, map1};
 }
 
 pub const fn map1() -> Map<'static> {

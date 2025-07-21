@@ -39,15 +39,15 @@ pub mod test {
     use super::prelude::*;
     use anyhow::Result;
     use reqwest::get;
+    use tokio::sync::Mutex;
     use tokio::{
         task::{JoinSet, spawn_local as go},
         time::sleep,
     };
-    use tokio::sync::Mutex;
 
     #[derive(Clone)]
     struct A {
-        i: String
+        i: String,
     }
 
     struct Data {
@@ -73,7 +73,7 @@ pub mod test {
     }
     pub async fn test3() {
         let mut a = A {
-            i: "hi".to_string()
+            i: "hi".to_string(),
         };
         let future = go({
             let a = a.clone();

@@ -7,6 +7,8 @@
       <sourceFolder url="file://$MODULE_DIR$/main/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/object-derive/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tcp_server/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/react/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/simple_server/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

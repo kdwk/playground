@@ -2,12 +2,67 @@ pub mod prelude {
     pub use super::{Cons, Empty, List, cons};
 }
 
-use std::ops::{Index, IndexMut};
 use replace_with::replace_with_or_abort;
+use std::cmp::Ordering;
+use std::ops::{Index, IndexMut};
 
 pub enum List<T> {
     Cons(T, Box<List<T>>),
     Empty,
+}
+
+impl<T> List<T> {
+    pub fn len(&self) -> usize {
+        match self {
+            Cons(_, list) => 1 + list.len(),
+            Empty => 0,
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Empty => true,
+            _ => false,
+        }
+    }
+    pub fn push(&mut self, elem: T) {
+        match self {
+            Cons(_, list) => list.push(elem),
+            Empty => replace_with_or_abort(self, |this| cons(elem, Empty)),
+        }
+    }
+    pub fn contains(&self, x: &T) -> bool
+    where
+        T: PartialEq,
+    {
+        match self {
+            Cons(elem, others) => elem == x || others.contains(x),
+            Empty => false,
+        }
+    }
+    pub fn starts_with(&self, needle: &Self) -> bool
+    where
+        T: PartialEq,
+    {
+        match self {
+            Cons(x, xs) => match needle {
+                Cons(y, ys) => x == y && xs.starts_with(ys),
+                Empty => false,
+            },
+            Empty => needle.is_empty(),
+        }
+    }
+    pub fn iter(&self) -> ListRefIter<T> {
+        match self {
+            Cons(head, tail) => ListRefIter::Cons(Some(head), tail),
+            Empty => ListRefIter::Empty,
+        }
+    }
+    pub fn iter_mut(&mut self) -> ListRefMutIter<T> {
+        match self {
+            Cons(head, tail) => ListRefMutIter::Cons(Some(head), tail),
+            Empty => ListRefMutIter::Empty,
+        }
+    }
 }
 
 impl<T> IntoIterator for List<T> {
@@ -17,14 +72,14 @@ impl<T> IntoIterator for List<T> {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Cons(elem, others) => ListIter::Cons(Some(elem), others),
-            Empty => ListIter::Empty
+            Empty => ListIter::Empty,
         }
     }
 }
 
 pub enum ListIter<T> {
     Cons(Option<T>, Box<List<T>>),
-    Empty
+    Empty,
 }
 
 impl<T> Iterator for ListIter<T> {
@@ -35,26 +90,55 @@ impl<T> Iterator for ListIter<T> {
                 let ret = elem.take().unwrap();
                 replace_with_or_abort(self, |this| match this {
                     ListIter::Cons(_, others) => others.into_iter(),
-                    ListIter::Empty => unreachable!()
+                    ListIter::Empty => unreachable!(),
                 });
                 Some(ret)
             }
-            ListIter::Empty => None
+            ListIter::Empty => None,
         }
     }
 }
 
-impl<T> List<T> {
-    pub fn len(&self) -> usize {
+pub enum ListRefIter<'a, T> {
+    Cons(Option<&'a T>, &'a Box<List<T>>),
+    Empty,
+}
+
+impl<'a, T> Iterator for ListRefIter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Cons(_, list) => 1 + list.len(),
-            Empty => 0,
+            ListRefIter::Cons(elem, others) => {
+                let ret = elem.take().unwrap();
+                replace_with_or_abort(self, |this| match this {
+                    ListRefIter::Cons(_, others) => others.iter(),
+                    ListRefIter::Empty => unreachable!(),
+                });
+                Some(ret)
+            }
+            ListRefIter::Empty => None,
         }
     }
-    pub fn append(self, elem: T) -> Self {
+}
+
+pub enum ListRefMutIter<'a, T> {
+    Cons(Option<&'a mut T>, &'a mut Box<List<T>>),
+    Empty,
+}
+
+impl<'a, T> Iterator for ListRefMutIter<'a, T> {
+    type Item = &'a mut T;
+    fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Cons(x, list) => cons(x, list.append(elem)),
-            Empty => cons(elem, Empty)
+            ListRefMutIter::Cons(elem, others) => {
+                let ret = elem.take().unwrap();
+                replace_with_or_abort(self, |this| match this {
+                    ListRefMutIter::Cons(_, others) => others.iter_mut(),
+                    ListRefMutIter::Empty => unreachable!(),
+                });
+                Some(ret)
+            }
+            ListRefMutIter::Empty => None,
         }
     }
 }
@@ -66,7 +150,7 @@ impl<T> Index<usize> for List<T> {
         match (index, self) {
             (0, Cons(elem, _)) => elem,
             (n, Cons(_, others)) => others.index(n - 1),
-            (_, Empty) => panic!("Index out of range")
+            (_, Empty) => panic!("Index out of range"),
         }
     }
 }
@@ -76,29 +160,109 @@ impl<T> IndexMut<usize> for List<T> {
         match (index, self) {
             (0, Cons(elem, _)) => elem,
             (n, Cons(_, others)) => others.index_mut(n - 1),
-            (_, Empty) => panic!("Index out of range")
+            (_, Empty) => panic!("Index out of range"),
+        }
+    }
+}
+
+impl<T> PartialEq for List<T>
+where
+    T: PartialEq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Cons(x, xs) => match other {
+                Cons(y, ys) => x == y && xs == ys,
+                Empty => false,
+            },
+            Empty => match other {
+                Cons(_, _) => false,
+                Empty => true,
+            },
+        }
+    }
+}
+
+impl<T> PartialOrd for List<T>
+where
+    T: PartialOrd,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self {
+            Cons(x, xs) => match other {
+                Cons(y, ys) => {
+                    if x == y {
+                        xs.partial_cmp(ys)
+                    } else {
+                        x.partial_cmp(y)
+                    }
+                }
+                Empty => Some(Ordering::Greater),
+            },
+            Empty => match other {
+                Cons(_, _) => Some(Ordering::Less),
+                Empty => Some(Ordering::Equal),
+            },
+        }
+    }
+}
+
+impl<T> Eq for List<T> where T: Eq {}
+impl<T> Ord for List<T>
+where
+    T: Ord,
+{
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            Cons(x, xs) => match other {
+                Cons(y, ys) => {
+                    if x == y {
+                        xs.cmp(ys)
+                    } else {
+                        x.cmp(y)
+                    }
+                }
+                Empty => Ordering::Greater,
+            },
+            Empty => match other {
+                Cons(_, _) => Ordering::Less,
+                Empty => Ordering::Equal,
+            },
         }
     }
 }
 
 pub use List::{Cons, Empty};
 
-pub fn cons<T>(elem: T, list: List<T>) -> List<T> {
-    Cons(elem, Box::new(list))
+pub fn cons<T>(head: T, tail: List<T>) -> List<T> {
+    Cons(head, Box::new(tail))
+}
+
+macro_rules! link {
+    // Base case: no elements
+    [] => {
+        List::Empty
+    };
+    // Recursive case: at least one element
+    [$head:expr $(, $tail:expr)* $(,)?] => {
+        cons($head, link![$($tail),*])
+    };
 }
 
 pub mod test {
+    use super::{Cons, Empty, List, cons};
     use crate::go::Then;
     use crate::recipe::{Discard, Log};
-    use super::{Cons, Empty, List, cons};
 
     struct A {
-        string: String
+        string: String,
     }
 
     impl A {
         fn new() -> Self {
-            Self {string: "bum".to_string() }
+            Self {
+                string: "bum".to_string(),
+            }
         }
     }
 
@@ -111,5 +275,12 @@ pub mod test {
         println!("a at 2: {}", a[2]);
         a[2] = 4;
         println!("a at 2: {}", a[2]);
+        a.push(4);
+        println!("a at 3: {}", a[3]);
+        let b = link![1, 2, 3];
+        b.into_iter().for_each(|i| println!("{i}"));
+        let mut c = link!["a".to_string(), "b".to_string(), "c".to_string()];
+        c.iter_mut().for_each(|mut s| *s += "1");
+        c.iter().for_each(|s| println!("{s}"));
     }
 }
