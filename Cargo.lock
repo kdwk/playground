@@ -1127,6 +1127,7 @@ dependencies = [
  "extend",
  "object-derive",
  "open",
+ "react",
  "replace_with",
  "reqwest",
  "serde",
@@ -1446,6 +1447,8 @@ name = "react"
 version = "0.1.0"
 dependencies = [
  "crossterm",
+ "documents",
+ "log",
  "tokio",
 ]
 

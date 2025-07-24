@@ -33,7 +33,7 @@ pub async fn test() {
 pub mod test {
     use std::sync::Arc;
     use std::{cell::RefCell, sync::atomic::AtomicU32, time::Duration};
-
+    use std::rc::Rc;
     use crate::recipe::Discard;
 
     use super::prelude::*;
@@ -157,4 +157,15 @@ pub mod test {
         });
         a[2] = c.await.unwrap();
     }
+    // pub async fn test10() {
+    //     let mut a = Arc::new(4);
+    //     go({
+    //         let a = a.clone();
+    //         async move {
+    //             sleep(Duration::from_secs(3)).await;
+    //             *a += 2;
+    //         }
+    //     }).await.discard();
+    //     println!("{a}");
+    // }
 }

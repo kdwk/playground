@@ -68,6 +68,17 @@ pub fn widget(w: impl Widget + 'static) -> Box<dyn Widget> {
 //     Ok(surface)
 // }
 
+// struct State<T> {
+//     current: T,
+//     updates: Vec<Box<dyn FnOnce(&mut T)>>
+// }
+//
+// impl<T> State<T> {
+//     fn set(&mut self, val: T) {
+//         self.updates
+//     }
+// }
+
 pub fn render(display_list: DisplayList, stdout: &mut Stdout) -> io::Result<()> {
     stdout.queue(Clear(ClearType::All))?;
     for (location @ (y, x), drawable) in display_list.instructions {
@@ -75,7 +86,7 @@ pub fn render(display_list: DisplayList, stdout: &mut Stdout) -> io::Result<()> 
             match drawable {
                 Drawable::Char(c) => {
                     stdout.queue(MoveTo(x, y))?;
-                    print!("{}", c);
+                    print!("{c}");
                 }
             }
         }

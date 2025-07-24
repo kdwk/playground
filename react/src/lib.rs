@@ -7,6 +7,8 @@ mod map;
 mod single_char;
 mod stateful;
 mod widget;
+mod log;
+mod state;
 
 pub mod prelude {
     pub use super::{test, widget::prelude::*};

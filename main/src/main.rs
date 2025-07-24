@@ -187,7 +187,7 @@ use tokio::{
     time::sleep,
 };
 
-// use react::prelude::*;
+use react::prelude::*;
 
 async fn run_local<T>(future: impl Future<Output = T>) -> T {
     let local_set = LocalSet::new();
@@ -197,12 +197,12 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
     // run_local(async {
-    //     async_exp::test::test8().await.discard();
+    //     async_exp::test::test10().await.discard();
     //     Ok(())
     // })
     // .await
-    // react::test::test().await;
-    linked_list::test::test2();
+    react::test::test().await;
+    // linked_list::test::test2();
     Ok(())
 }
 
