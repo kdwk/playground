@@ -132,6 +132,7 @@
 #![allow(unused_imports)]
 mod async_exp;
 mod compose;
+mod concat;
 mod fruits;
 mod go;
 mod guard_map;
@@ -187,8 +188,6 @@ use tokio::{
     time::sleep,
 };
 
-use react::prelude::*;
-
 async fn run_local<T>(future: impl Future<Output = T>) -> T {
     let local_set = LocalSet::new();
     local_set.run_until(future).await
@@ -201,8 +200,9 @@ async fn main() -> Result<(), anyhow::Error> {
     //     Ok(())
     // })
     // .await
-    react::test::test().await;
+    // react::test::test().await;
     // linked_list::test::test2();
+    concat::test::test1();
     Ok(())
 }
 
@@ -502,12 +502,3 @@ fn test15() {
     let s1 = *s;
     // let a = map2.get_any::<i32>("A");
 }
-
-// fn test16() {
-//     let thing = Some("thing");
-//     if let Some(thing) = thing
-//         && thing == "thing"
-//     {
-//         println!("true");
-//     }
-// }

@@ -4,6 +4,7 @@ pub mod prelude {
 
 use replace_with::replace_with_or_abort;
 use std::cmp::Ordering;
+use std::fmt::{Debug, Display, format};
 use std::ops::{Index, IndexMut};
 
 pub enum List<T> {
@@ -29,6 +30,22 @@ impl<T> List<T> {
             Cons(_, list) => list.push(elem),
             Empty => replace_with_or_abort(self, |this| cons(elem, Empty)),
         }
+    }
+    pub fn push_front(&mut self, elem: T) {
+        replace_with_or_abort(self, |this| cons(elem, this));
+    }
+    pub fn back(&mut self) -> &mut Self {
+        match self {
+            Cons(_, list) if list.is_empty() => self,
+            Cons(_, list) => list.back(),
+            Empty => self,
+        }
+    }
+    pub fn append(&mut self, other: Self) {
+        replace_with_or_abort(self.back(), |back| match back {
+            Cons(element, _) => cons(element, other),
+            Empty => other,
+        });
     }
     pub fn contains(&self, x: &T) -> bool
     where
@@ -65,6 +82,17 @@ impl<T> List<T> {
     }
 }
 
+impl<T: Debug> List<T> {
+    pub fn join(&self, separator: impl AsRef<str>) -> String {
+        let separator = separator.as_ref();
+        match self {
+            Cons(elem, tail) if tail.is_empty() => format!("{elem:?}"),
+            Cons(elem, tail) => format!("{elem:?}{}{}", separator, tail.join(separator)),
+            Empty => "".to_string(),
+        }
+    }
+}
+
 impl<T> IntoIterator for List<T> {
     type Item = T;
     type IntoIter = ListIter<T>;
@@ -74,6 +102,12 @@ impl<T> IntoIterator for List<T> {
             Cons(elem, others) => ListIter::Cons(Some(elem), others),
             Empty => ListIter::Empty,
         }
+    }
+}
+
+impl<T: Debug> Debug for List<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}]", self.join(", "))
     }
 }
 
@@ -232,20 +266,37 @@ where
     }
 }
 
+impl<T> FromIterator<T> for List<T> {
+    fn from_iter<It: IntoIterator<Item = T>>(iter: It) -> Self {
+        let mut iter = iter.into_iter();
+        match iter.next() {
+            Some(element) => cons(element, List::from_iter(iter)),
+            None => Empty,
+        }
+    }
+}
+
+impl<T> Extend<T> for List<T> {
+    fn extend<It: IntoIterator<Item = T>>(&mut self, iter: It) {
+        self.append(iter.into_iter().collect());
+    }
+}
+
 pub use List::{Cons, Empty};
 
 pub fn cons<T>(head: T, tail: List<T>) -> List<T> {
     Cons(head, Box::new(tail))
 }
 
+#[macro_export]
 macro_rules! link {
     // Base case: no elements
     [] => {
-        List::Empty
+        $crate::linked_list::List::Empty
     };
     // Recursive case: at least one element
     [$head:expr $(, $tail:expr)* $(,)?] => {
-        cons($head, link![$($tail),*])
+        $crate::linked_list::cons($head, link![$($tail),*])
     };
 }
 
@@ -282,5 +333,9 @@ pub mod test {
         let mut c = link!["a".to_string(), "b".to_string(), "c".to_string()];
         c.iter_mut().for_each(|mut s| *s += "1");
         c.iter().for_each(|s| println!("{s}"));
+    }
+    pub fn test3() {
+        let mut a = link![1, 2, 3];
+        a.push_front(0);
     }
 }

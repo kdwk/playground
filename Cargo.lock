@@ -1127,7 +1127,6 @@ dependencies = [
  "extend",
  "object-derive",
  "open",
- "react",
  "replace_with",
  "reqwest",
  "serde",
