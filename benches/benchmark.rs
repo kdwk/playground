@@ -1,5 +1,5 @@
-use criterion::{Criterion, criterion_group, criterion_main};
-use main::prelude::*;
+use criterion::{criterion_group, criterion_main, Criterion};
+use stdext::prelude::*;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("quicksort 1000", |b| {

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["main", "react", "simple_server", "tcp_server"]
+members = ["stdext", "puzzles", "react", "simple_server", "tcp_server"]
 
 [profile.release]
 debug = true
@@ -15,4 +15,4 @@ harness = false
 
 [dependencies]
 criterion = "0.5.1"
-main = { path = "main" }
+stdext = { path = "stdext" }
