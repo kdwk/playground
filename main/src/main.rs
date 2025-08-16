@@ -132,7 +132,6 @@
 #![allow(unused_imports)]
 mod async_exp;
 mod compose;
-mod concat;
 mod fruits;
 mod go;
 mod guard_map;
@@ -141,6 +140,7 @@ mod map;
 mod mixture;
 mod numbers;
 mod object;
+mod plus;
 mod quicksort;
 mod recipe;
 mod tree;
@@ -202,7 +202,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // .await
     // react::test::test().await;
     // linked_list::test::test2();
-    concat::test::test1();
+    plus::test::test1();
     Ok(())
 }
 
