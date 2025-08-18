@@ -9,6 +9,7 @@ pub fn answer(n: i32) -> i32 {
     }
 }
 
+#[test]
 pub fn test() {
     answer(4).log();
 }

@@ -145,6 +145,8 @@ mod quicksort;
 mod recipe;
 mod tree;
 mod whoops;
+mod assertion;
+mod substr;
 
 use std::{
     any::Any,
@@ -202,10 +204,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // .await
     // react::test::test().await;
     // linked_list::test::test2();
-    map! {
-        "a" => 2
-    };
-    plus::test::test1();
+    substr::test::test1();
     Ok(())
 }
 

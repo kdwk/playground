@@ -2,12 +2,14 @@ use std::{
     fmt::{Debug, Display},
     sync::Arc,
 };
-
+use std::error::Error;
+use std::io::stderr;
 use extend::ext;
+use std::io::Write;
 
 pub mod prelude {
     pub use super::{
-        Apply, ClosureExt, Discard, Log, Pass, Pipe, Recipe, Runnable, Step, identity,
+        Apply, ClosureExt, Discard, Log, Pass, Pipe, Recipe, Runnable, Step, identity, LogErr,
     };
 }
 
@@ -179,6 +181,7 @@ where
     Self: Sized,
     Closure: FnOnce(Self) -> Return,
 {
+    #[inline]
     fn pipe(self, closure: Closure) -> Return {
         closure(self)
     }
@@ -197,6 +200,7 @@ where
     Self: Sized,
     Closure: FnOnce(&mut Self),
 {
+    #[inline]
     fn apply(mut self, closure: Closure) -> Self {
         closure(&mut self);
         self
@@ -211,9 +215,27 @@ impl<T> Log for T
 where
     T: Debug,
 {
+    #[inline]
     fn log(self) -> Self {
         println!("{self:?}");
         self
+    }
+}
+
+pub trait LogErr {
+    fn log_err(self) -> Self;
+}
+
+impl<T, E: Error> LogErr for Result<T, E> {
+    #[inline]
+    fn log_err(self) -> Self {
+        match self {
+            Ok(_) => self,
+            Err(e) => {
+                _ = writeln!(stderr(), "{e}");
+                Err(e)
+            }
+        }
     }
 }
 
@@ -235,6 +257,7 @@ impl<Closure, Arg, Return> Closure
 where
     Closure: FnMut(Arg) -> Return,
 {
+    #[inline]
     fn then<SecondReturn>(
         mut self,
         mut with: impl FnMut(Return) -> SecondReturn,
@@ -263,6 +286,7 @@ pub trait Discard {
 }
 
 impl<T> Discard for T {
+    #[inline]
     fn discard(self) {
         _ = self;
     }

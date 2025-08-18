@@ -76,6 +76,7 @@ pub fn answer(l1: Option<Box<ListNode>>, l2: Option<Box<ListNode>>) -> Option<Bo
     _answer(0, l1, l2)
 }
 
+#[test]
 pub fn test() {
     answer(
         ListNode::from_slice(&[9, 9, 9, 9, 9, 9, 9]),
