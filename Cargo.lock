@@ -1388,6 +1388,9 @@ dependencies = [
 [[package]]
 name = "puzzles"
 version = "0.1.0"
+dependencies = [
+ "stdext",
+]
 
 [[package]]
 name = "quote"

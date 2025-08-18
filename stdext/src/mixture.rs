@@ -16,7 +16,7 @@ pub mod prelude {
 macro_rules! mix {
     ( $( $x:expr ),* $(,)? ) => {
         {
-            let mut mixture = Mixture::new();
+            let mut mixture = $crate::mixture::Mixture::new();
             $(
                 mixture.add($x);
             )*
@@ -100,6 +100,7 @@ impl<'a> AnythingExt<'a> for Anything<'a> {
 macro_rules! mixedmap {
     ($( $x:expr => $y:expr ),* $(,)?) => {
         {
+            use std::collections::HashMap;
             HashMap::from([
                 $(($x, any($y)),)*
             ])
