@@ -12,5 +12,5 @@ pub trait Object: Clone + PartialEq + Hash {
 }
 
 pub trait Enum: Object {
-    fn variants() -> Vec<Self>;
+    fn variants() -> &'static [Self];
 }

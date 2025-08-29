@@ -31,8 +31,8 @@ pub fn derive_enum(input: TokenStream) -> TokenStream {
             }
         }
         impl Enum for #enum_name {
-            fn variants() -> Vec<Self> {
-                vec![#(#enum_name::#variants),*]
+            fn variants() -> &'static [Self] {
+                &[#(#enum_name::#variants),*]
             }
         }
     };

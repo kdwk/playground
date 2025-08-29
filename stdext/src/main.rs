@@ -130,11 +130,13 @@
 // }
 
 #![allow(unused_imports)]
+mod assertion;
 mod async_exp;
 mod compose;
 mod fruits;
 mod go;
 mod guard_map;
+mod input;
 mod linked_list;
 mod map;
 mod mixture;
@@ -143,10 +145,9 @@ mod object;
 mod plus;
 mod quicksort;
 mod recipe;
+mod substr;
 mod tree;
 mod whoops;
-mod assertion;
-mod substr;
 
 use std::{
     any::Any,
@@ -204,7 +205,8 @@ async fn main() -> Result<(), anyhow::Error> {
     // .await
     // react::test::test().await;
     // linked_list::test::test2();
-    substr::test::test1();
+    // substr::test::test1();
+    input::test::test1();
     Ok(())
 }
 
@@ -503,4 +505,26 @@ fn test15() {
     let s = Box::new("A");
     let s1 = *s;
     // let a = map2.get_any::<i32>("A");
+}
+
+struct Context {
+    is_clicked: bool,
+}
+
+fn gen_num() -> impl FnMut(&Context) -> i32 {
+    let mut num = Box::new(0);
+    move |state: &Context| {
+        let old = *num;
+        if state.is_clicked {
+            *num += 1;
+        }
+        old
+    }
+}
+
+fn test16() {
+    let mut generator = gen_num();
+    for i in 0..20 {
+        println!("{}", generator(&Context { is_clicked: i == 0 }));
+    }
 }
