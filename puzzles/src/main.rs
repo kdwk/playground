@@ -1,5 +1,5 @@
 fn main() {
-    lc::q3::test();
+    lc::q7::test();
 }
 
 mod lc;

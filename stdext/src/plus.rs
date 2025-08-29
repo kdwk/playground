@@ -4,12 +4,18 @@ pub mod prelude {
 
 pub trait Plus<T> {
     fn plus<It: IntoIterator<Item = T>>(self, other: It) -> Self;
+    fn plus_one(self, other: T) -> Self;
 }
 
 impl<T, Ty: Extend<T>> Plus<T> for Ty {
     #[inline]
     fn plus<It: IntoIterator<Item = T>>(mut self, other: It) -> Self {
         self.extend(other);
+        self
+    }
+    #[inline]
+    fn plus_one(mut self, other: T) -> Self {
+        self.extend([other]);
         self
     }
 }

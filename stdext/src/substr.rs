@@ -3,6 +3,7 @@ pub mod prelude {
 }
 
 pub trait SubStr {
+    /// Slice of string [`start`, `end`)
     fn substr(&self, start: usize, end: usize) -> String;
 }
 

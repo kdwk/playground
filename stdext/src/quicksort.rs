@@ -3,7 +3,7 @@ pub mod prelude {
 }
 
 use std::iter::Iterator;
-
+use crate::plus::prelude::*;
 use extend::ext;
 
 pub fn quicksort<T: PartialOrd>(mut list: Vec<T>) -> Vec<T> {
@@ -16,8 +16,8 @@ pub fn quicksort<T: PartialOrd>(mut list: Vec<T>) -> Vec<T> {
                 .map(sorting_flap(|item| item < &pivot))
                 .collect2_vec();
             quicksort(smaller)
-                .join_with_element(pivot)
-                .join_with(quicksort(bigger))
+                .plus_one(pivot)
+                .plus(quicksort(bigger))
         }
     }
 }
