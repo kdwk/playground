@@ -6,7 +6,11 @@ use tokio::{
 };
 
 pub mod prelude {
-    pub use super::wait;
+    pub use super::{wait, wait_run};
+}
+
+pub async fn wait_run<Ret>(f: impl AsyncFnOnce(u64) -> Ret) -> Ret {
+    f(2).await
 }
 
 pub async fn wait(secs: u64) {
@@ -31,10 +35,10 @@ pub async fn test() {
 }
 
 pub mod test {
+    use crate::recipe::Discard;
+    use std::rc::Rc;
     use std::sync::Arc;
     use std::{cell::RefCell, sync::atomic::AtomicU32, time::Duration};
-    use std::rc::Rc;
-    use crate::recipe::Discard;
 
     use super::prelude::*;
     use anyhow::Result;
@@ -165,7 +169,17 @@ pub mod test {
     //             sleep(Duration::from_secs(3)).await;
     //             *a += 2;
     //         }
-    //     }).await.discard();
+    //     })
+    //     .await
+    //     .discard();
     //     println!("{a}");
     // }
+    pub async fn test11() {
+        let a = wait_run(async |secs| {
+            sleep(Duration::from_secs(secs)).await;
+            5
+        })
+        .await;
+        println!("{a}");
+    }
 }

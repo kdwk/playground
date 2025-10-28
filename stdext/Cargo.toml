@@ -21,4 +21,3 @@ replace_with = "0.1.8"
 # crossbeam = "0.8.4"
 # gtk4 = "0.7.3"
 reqwest = { version = "0.12.21", features = ["json"] }
-# react = { path = "../react" }

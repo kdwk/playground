@@ -22,4 +22,6 @@ pub mod prelude {
     pub use super::substr::prelude::*;
     pub use super::whoops::prelude::*;
     pub use super::{link, linked_list::prelude::*};
+    pub use anyhow::Result;
+    pub use tokio::task::{LocalSet, spawn_local as go};
 }

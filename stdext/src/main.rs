@@ -159,6 +159,7 @@ use std::{
     io::Write,
     ops::Sub,
     path::PathBuf,
+    rc::Rc,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -198,16 +199,18 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
-    // run_local(async {
-    //     async_exp::test::test10().await.discard();
-    //     Ok(())
-    // })
-    // .await
+    let a = Rc::new(String::new());
+    *a += "abc";
+    run_local(async {
+        async_exp::test::test11().await.discard();
+        Ok(())
+    })
+    .await
     // react::test::test().await;
     // linked_list::test::test2();
     // substr::test::test1();
-    input::test::test1();
-    Ok(())
+    // input::test::test1();
+    // Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
