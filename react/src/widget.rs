@@ -74,14 +74,15 @@ where
     }
 }
 
-impl<State> Component for Widget<State> {
+impl<State> Component for Widget<State> where State: PartialEq {
     fn create_element(&mut self) -> Box<dyn Element> {
         (self.create_element.clone())(self)
     }
     fn on_keypress(&mut self, event: &KeyEvent) {
-        // let prev = replace_with_or_abort_and_return(&mut self.state, |state| {
-        //     (&state, (self.on_keypress)(&state, event))
-        // });
-        // (self.on_keypress)(&self.state, event);
+        let new_state = (self.on_keypress)(&self.state, event);
+        if new_state != self.state {
+            self.needs_rebuild = true;
+        }
+        self.state = new_state;
     }
 }
