@@ -1,4 +1,4 @@
-use react::{prelude::*, widget::widget};
+use react::{prelude::*, widget2::widget};
 use stdext::prelude::*;
 
 use crate::{counter::Counter, number::Number};

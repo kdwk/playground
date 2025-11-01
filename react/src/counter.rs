@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use react::{
     hooks::{cb, on_keypress},
-    widget::{Stateful, Widget, widget},
+    widget2::{Stateful, Widget, widget},
 };
 
 use crate::number::Number;

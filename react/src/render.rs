@@ -18,7 +18,7 @@ use crossterm::{
 use futures::StreamExt;
 use tokio::task;
 
-use crate::{elements::prelude::*, hooks::ON_KEYPRESS_CBS, widget::Widget};
+use crate::{elements::prelude::*, hooks::ON_KEYPRESS_CBS, widget2::Widget};
 
 pub mod prelude {
     pub use super::render;

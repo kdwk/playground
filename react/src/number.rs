@@ -1,6 +1,6 @@
 use react::{
     elements::{number_element::NumberElement, prelude::*},
-    widget::Widget,
+    widget2::Widget,
 };
 use std::{cell::RefCell, rc::Rc};
 
