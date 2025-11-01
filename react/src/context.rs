@@ -1,33 +1,21 @@
-use std::{any::Any, cell::RefCell, collections::VecDeque, rc::Rc};
+use crossterm::event::KeyEvent;
 
-pub(crate) struct _Context {
-    pub(crate) objs: VecDeque<Rc<dyn Any>>,
+pub struct Context<'a> {
+    on_keypress_cbs: Vec<Box<dyn FnMut(&KeyEvent) + 'a>>,
 }
 
-pub struct Context {
-    inner: RefCell<_Context>,
-}
-
-impl Context {
-    pub(crate) fn new() -> Self {
+impl<'a> Context<'a> {
+    pub fn new() -> Self {
         Context {
-            inner: RefCell::new(_Context {
-                objs: VecDeque::new(),
-            }),
+            on_keypress_cbs: vec![],
         }
     }
-    pub fn try_get<T: 'static>(&self) -> Option<Rc<T>> {
-        self.inner
-            .borrow()
-            .objs
-            .iter()
-            .find(|obj| obj.is::<T>())
-            .map(|obj| obj.clone().downcast().unwrap())
+    pub fn on_keypress(&mut self, f: impl FnMut(&KeyEvent) + 'a) {
+        self.on_keypress_cbs.push(Box::new(f));
     }
-    pub fn get<T: 'static>(&self) -> Rc<T> {
-        self.try_get().unwrap()
-    }
-    pub fn inject<T: 'static>(&self, state: T) {
-        self.inner.borrow_mut().objs.push_front(Rc::new(state));
+    pub(crate) fn run_on_keypress_cbs(&mut self, keyevent: &KeyEvent) {
+        for cb in self.on_keypress_cbs.iter_mut() {
+            cb(keyevent);
+        }
     }
 }

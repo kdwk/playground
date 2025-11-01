@@ -1,35 +1,52 @@
-use std::cell::{RefCell, RefMut};
+use std::{cell::RefCell, rc::Rc};
 
 use crossterm::event::{Event, KeyCode, KeyEvent};
-use crate::log::log;
-use crate::{
-    context::Context,
-    input::Input,
-    single_char::SingleChar,
-    stateful::Stateful,
-    widget::{Widget, widget},
+use react::{
+    hooks::{cb, on_keypress},
+    widget::{Stateful, Widget, widget},
 };
-use crate::stateful::Stateful1;
 
-#[derive(Debug, Default)]
+use crate::number::Number;
+
+#[derive(Default, Debug)]
 pub struct Counter {
-    pub val: char,
+    i: i32,
+    prev: Option<Rc<RefCell<dyn Widget>>>,
+    needs_rebuild: bool,
+}
+
+impl Counter {
+    pub fn new(i: i32) -> Self {
+        Counter {
+            i,
+            ..Default::default()
+        }
+    }
 }
 
 impl Widget for Counter {
-    fn build(&self, context: &Context) -> Box<dyn Widget> {
-        widget(Stateful1::new(self.val, |context, state, next| {
-            // log(state);
-            let input = Input::of(context);
-            match input.event {
-                Event::Key(keyevent) => match keyevent.code {
-                    KeyCode::Char(c) => *next.borrow_mut() = c,
-                    // KeyCode::Char('-') => set_state(|mut state| *state -= 1),
-                    _ => {}
-                },
+    fn prev(&self) -> Option<Rc<RefCell<dyn Widget>>> {
+        self.prev.clone()
+    }
+    fn set_prev(&mut self, prev: Rc<RefCell<dyn Widget>>) {
+        self.prev = Some(prev);
+    }
+    fn needs_rebuild(&self) -> bool {
+        self.needs_rebuild
+    }
+    fn set_needs_rebuild(&mut self, needs_rebuild: bool) {
+        self.needs_rebuild = needs_rebuild;
+    }
+    fn on_keypress(&mut self, event: &Event) {
+        if let Event::Key(KeyEvent { code, .. }) = event {
+            match code {
+                KeyCode::Char('+') => self.set_state(|this| this.i += 1),
+                KeyCode::Char('-') => self.set_state(|this| this.i -= 1),
                 _ => {}
             }
-            widget(SingleChar { c: state })
-        }))
+        }
+    }
+    fn build(&self) -> Rc<RefCell<dyn Widget>> {
+        widget(Number::new(self.i))
     }
 }

@@ -1,24 +1,11 @@
-mod context;
-mod counter;
-mod dynamic_char;
-mod element;
-mod input;
-mod map;
-mod single_char;
-mod stateful;
-mod widget;
+pub mod context;
+pub mod elements;
+pub mod hooks;
 mod log;
-mod state;
+pub(crate) mod render;
+pub mod widget;
+pub mod widget1;
 
 pub mod prelude {
-    pub use super::{test, widget::prelude::*};
-}
-
-pub mod test {
-
-    use crate::{counter::Counter, dynamic_char::DynamicChar, widget::prelude::*};
-
-    pub async fn test() {
-        run(Counter { val: 'a' }).await.unwrap();
-    }
+    pub use super::{elements::prelude::*, render::prelude::*, widget};
 }

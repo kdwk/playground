@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-crossterm = "0.29.0"
+crossterm = { version = "0.29.0", features = ["event-stream"] }
 documents = "0.1.2"
 tokio = { version = "1.45.1", features = ["full"] }
 log = "0.4.27"
+stdext = { version = "0.1.0", path = "../stdext" }
+anyhow = "1.0.100"
+futures = "0.3.31"
