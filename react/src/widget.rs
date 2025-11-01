@@ -10,10 +10,10 @@ pub mod prelude {
 
 pub struct Widget<State> {
     state: State,
-    prev: Option<Rc<RefCell<dyn Component>>>,
+    prev: Option<Component>,
     needs_rebuild: bool,
-    builder: Box<dyn Fn(&State) -> Rc<RefCell<dyn Component>>>,
-    on_keypress: Box<dyn Fn(&State, &KeyEvent) -> State>,
+    builder: Box<dyn Fn(&State) -> Component>,
+    on_keypress: Rc<dyn Fn(&mut Self, &KeyEvent)>,
     create_element: Rc<dyn Fn(&mut Self) -> Box<dyn Element>>,
 }
 
@@ -21,47 +21,35 @@ impl<State> Widget<State>
 where
     State: 'static + PartialEq,
 {
-    pub fn stateless(
-        builder: impl Fn() -> Rc<RefCell<dyn Component>> + 'static,
-    ) -> Rc<RefCell<dyn Component>> {
-        Rc::new(RefCell::new(Widget {
-            state: (),
-            prev: None,
-            needs_rebuild: true,
-            builder: Box::new(move |_| builder()),
-            on_keypress: Box::new(|_, _| ()),
-            create_element: Rc::new(|this| this._build().borrow_mut().create_element()),
-        }))
-    }
     pub fn stateful(
         state: State,
-        on_keypress: impl Fn(&State, &KeyEvent) -> State + 'static,
-        builder: impl Fn(&State) -> Rc<RefCell<dyn Component>> + 'static,
-    ) -> Rc<RefCell<dyn Component>> {
+        on_keypress: impl Fn(&mut Self, &KeyEvent) + 'static,
+        builder: impl Fn(&State) -> Component + 'static,
+    ) -> Component {
         Rc::new(RefCell::new(Widget {
             state: state,
             prev: None,
             needs_rebuild: true,
             builder: Box::new(builder),
-            on_keypress: Box::new(on_keypress),
+            on_keypress: Rc::new(on_keypress),
             create_element: Rc::new(|this| this._build().borrow_mut().create_element()),
         }))
     }
     pub fn elemental(
         state: State,
-        on_keypress: impl Fn(&State, &KeyEvent) -> State + 'static,
+        on_keypress: impl Fn(&mut Self, &KeyEvent) + 'static,
         create_element: impl Fn(&mut Self) -> Box<dyn Element> + 'static,
-    ) -> Rc<RefCell<dyn Component>> {
+    ) -> Component {
         Rc::new(RefCell::new(Widget {
             state: state,
             prev: None,
             needs_rebuild: true,
             builder: Box::new(|_| panic!()),
-            on_keypress: Box::new(on_keypress),
+            on_keypress: Rc::new(on_keypress),
             create_element: Rc::new(create_element),
         }))
     }
-    fn _build(&mut self) -> Rc<RefCell<dyn Component>> {
+    fn _build(&mut self) -> Component {
         if !self.needs_rebuild
             && let Some(prev) = &self.prev
         {
@@ -73,9 +61,26 @@ where
             new_widget
         }
     }
+    pub fn set_state(&mut self, f: impl FnOnce(&mut State)) {
+        f(&mut self.state);
+        self.needs_rebuild = true;
+    }
 }
 
-impl<State> Component for Widget<State>
+impl Widget<()> {
+    pub fn stateless(builder: impl Fn() -> Component + 'static) -> Component {
+        Rc::new(RefCell::new(Widget {
+            state: (),
+            prev: None,
+            needs_rebuild: true,
+            builder: Box::new(move |_| builder()),
+            on_keypress: Rc::new(|_, _| ()),
+            create_element: Rc::new(|this| this._build().borrow_mut().create_element()),
+        }))
+    }
+}
+
+impl<State> _Component for Widget<State>
 where
     State: PartialEq,
 {
@@ -83,10 +88,6 @@ where
         (self.create_element.clone())(self)
     }
     fn on_keypress(&mut self, event: &KeyEvent) {
-        let new_state = (self.on_keypress)(&self.state, event);
-        if new_state != self.state {
-            self.needs_rebuild = true;
-        }
-        self.state = new_state;
+        (self.on_keypress.clone())(self, event);
     }
 }

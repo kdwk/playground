@@ -1,10 +1,5 @@
-use react::prelude::*;
+use react::{prelude::*, widgets::text_field::text_field};
 use stdext::prelude::*;
-
-use crate::counter::counter;
-
-mod counter;
-mod number;
 
 async fn run_local<T>(future: impl Future<Output = T>) -> T {
     let local_set = LocalSet::new();
@@ -14,7 +9,7 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     run_local(async {
-        render(counter(1)).await?;
+        render(text_field()).await?;
         Ok(())
     })
     .await

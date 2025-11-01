@@ -1,16 +1,14 @@
-use crate::{component::Component, prelude::Frame};
+use crate::{component::prelude::*, element::FrameExt, prelude::Frame};
 use std::{
-    cell::RefCell,
     io::{self, Write},
-    rc::Rc,
     time::Duration,
 };
 
 use anyhow::Result;
 use crossterm::{
-    ExecutableCommand,
+    ExecutableCommand, QueueableCommand,
     cursor::MoveTo,
-    event::{self, Event, EventStream, KeyCode, KeyEvent, KeyModifiers},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{
         Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
         enable_raw_mode,
@@ -23,15 +21,22 @@ pub mod prelude {
 
 fn print_frame(frame: Frame) -> Result<()> {
     let mut stdout = io::stdout();
-    for row in frame {
-        stdout.execute(MoveTo(0, 0))?;
-        stdout.write(row.iter().collect::<String>().as_bytes())?;
-        stdout.write(b"\n")?;
+    stdout.queue(Clear(ClearType::All))?;
+    for row_index in 0..frame.height() {
+        if row_index >= u16::MAX as usize {
+            break;
+        }
+        for (col_index, c) in frame[row_index].iter().enumerate() {
+            stdout.queue(MoveTo(col_index as u16, row_index as u16))?;
+            print!("{c}");
+        }
+        // stdout.write(frame[row_index].iter().collect::<String>().as_bytes())?;
     }
+    stdout.flush()?;
     Ok(())
 }
 
-fn setup(widget: Rc<RefCell<dyn Component>>) -> Result<()> {
+fn setup(widget: Component) -> Result<()> {
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
@@ -47,10 +52,10 @@ fn teardown() -> Result<()> {
     Ok(())
 }
 
-pub async fn render(widget: Rc<RefCell<dyn Component>>) -> Result<()> {
+pub async fn render(widget: Component) -> Result<()> {
     setup(widget.clone())?;
-    let mut element_tree = widget.borrow_mut().create_element();
-    print_frame(element_tree.draw())?;
+    let element_tree = widget.borrow_mut().create_element().draw();
+    print_frame(element_tree)?;
     loop {
         if event::poll(Duration::default())? {
             let event = event::read()?;
@@ -70,8 +75,8 @@ pub async fn render(widget: Rc<RefCell<dyn Component>>) -> Result<()> {
                 widget.borrow_mut().on_keypress(&event);
             }
         }
-        element_tree = widget.borrow_mut().create_element();
-        print_frame(element_tree.draw())?;
+        let element_tree = widget.borrow_mut().create_element().draw();
+        print_frame(element_tree)?;
         tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }
