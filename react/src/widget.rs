@@ -1,11 +1,12 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crossterm::event::KeyEvent;
-use replace_with::replace_with_or_abort_and_return;
 
 use crate::{component::prelude::*, prelude::Element};
 
-pub mod prelude {}
+pub mod prelude {
+    pub use super::Widget;
+}
 
 pub struct Widget<State> {
     state: State,
@@ -49,7 +50,7 @@ where
     pub fn elemental(
         state: State,
         on_keypress: impl Fn(&State, &KeyEvent) -> State + 'static,
-        create_element: impl Fn(&mut Self) -> Box<dyn Element> + 'static
+        create_element: impl Fn(&mut Self) -> Box<dyn Element> + 'static,
     ) -> Rc<RefCell<dyn Component>> {
         Rc::new(RefCell::new(Widget {
             state: state,
@@ -57,7 +58,7 @@ where
             needs_rebuild: true,
             builder: Box::new(|_| panic!()),
             on_keypress: Box::new(on_keypress),
-            create_element: Rc::new(create_element)
+            create_element: Rc::new(create_element),
         }))
     }
     fn _build(&mut self) -> Rc<RefCell<dyn Component>> {
@@ -74,7 +75,10 @@ where
     }
 }
 
-impl<State> Component for Widget<State> where State: PartialEq {
+impl<State> Component for Widget<State>
+where
+    State: PartialEq,
+{
     fn create_element(&mut self) -> Box<dyn Element> {
         (self.create_element.clone())(self)
     }

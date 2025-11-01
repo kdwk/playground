@@ -1,4 +1,3 @@
-use crate::{component::Component, prelude::Frame};
 use std::{
     cell::RefCell,
     io::{self, Write},
@@ -16,6 +15,10 @@ use crossterm::{
         enable_raw_mode,
     },
 };
+use futures::StreamExt;
+use tokio::task;
+
+use crate::{elements::prelude::*, hooks::ON_KEYPRESS_CBS, widget2::Widget};
 
 pub mod prelude {
     pub use super::render;
@@ -31,11 +34,11 @@ fn print_frame(frame: Frame) -> Result<()> {
     Ok(())
 }
 
-fn setup(widget: Rc<RefCell<dyn Component>>) -> Result<()> {
+fn setup(widget: Rc<RefCell<dyn Widget>>) -> Result<()> {
     let mut stdout = io::stdout();
     stdout.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
-    // _ = begin_listen_keypress(widget);
+    _ = begin_listen_keypress(widget);
     Ok(())
 }
 
@@ -47,28 +50,14 @@ fn teardown() -> Result<()> {
     Ok(())
 }
 
-pub async fn render(widget: Rc<RefCell<dyn Component>>) -> Result<()> {
+pub async fn render(widget: Rc<RefCell<dyn Widget>>) -> Result<()> {
     setup(widget.clone())?;
     let mut element_tree = widget.borrow_mut().create_element();
     print_frame(element_tree.draw())?;
     loop {
         if event::poll(Duration::default())? {
             let event = event::read()?;
-            if let Event::Key(
-                event @ KeyEvent {
-                    code, modifiers, ..
-                },
-            ) = event
-            {
-                match (modifiers, code) {
-                    (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
-                        teardown()?;
-                        return Ok(());
-                    }
-                    _ => {}
-                }
-                widget.borrow_mut().on_keypress(&event);
-            }
+            widget.borrow_mut().on_keypress(&event);
         }
         element_tree = widget.borrow_mut().create_element();
         print_frame(element_tree.draw())?;
@@ -88,4 +77,15 @@ fn should_quit(event: &Event) -> bool {
     } else {
         false
     }
+}
+
+async fn begin_listen_keypress(widget: Rc<RefCell<dyn Widget>>) {
+    task::spawn_local(async move {
+        let mut events = EventStream::new();
+        while let Some(event) = events.next().await {
+            if let Ok(event) = event {
+                // widget.borrow_mut().on_keypress(&event);
+            }
+        }
+    });
 }
