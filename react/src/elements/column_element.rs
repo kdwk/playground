@@ -1,5 +1,5 @@
 use crate::{
-    element::{FrameExt, ensure_same_width},
+    element::FrameExt,
     prelude::{Element, Frame},
 };
 

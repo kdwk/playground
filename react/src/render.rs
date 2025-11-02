@@ -13,6 +13,7 @@ use crossterm::{
         enable_raw_mode,
     },
 };
+use tokio::{sync::mpsc::{UnboundedSender, unbounded_channel}, task::JoinHandle};
 
 pub mod prelude {
     pub use super::render;
@@ -35,26 +36,28 @@ fn print_frame(frame: Frame) -> Result<()> {
     Ok(())
 }
 
-fn setup(widget: Component) -> Result<()> {
-    let mut stdout = io::stdout();
-    stdout.execute(EnterAlternateScreen)?;
-    enable_raw_mode()?;
+fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
+    let (sender, mut receiver) = unbounded_channel();
+    let printing_task = tokio::task::spawn_blocking(move || -> Result<()> {
+        let mut stdout = io::stdout();
+        stdout.execute(EnterAlternateScreen)?;
+        enable_raw_mode()?;
+        while let Some(frame) = receiver.blocking_recv() {
+            print_frame(frame)?;
+        }
+        stdout.execute(Clear(ClearType::All))?;
+        disable_raw_mode()?;
+        stdout.execute(LeaveAlternateScreen)?;
+        Ok(())
+    });
     // _ = begin_listen_keypress(widget);
-    Ok(())
+    (sender, printing_task)
 }
 
-fn teardown() -> Result<()> {
-    let mut stdout = io::stdout();
-    stdout.execute(Clear(ClearType::All))?;
-    disable_raw_mode()?;
-    stdout.execute(LeaveAlternateScreen)?;
-    Ok(())
-}
-
-pub fn render(widget: Component) -> Result<()> {
-    setup(widget.clone())?;
-    let element_tree = widget.borrow_mut().create_element().draw();
-    print_frame(element_tree)?;
+pub async fn render(widget: Component) -> Result<()> {
+    let (frame_sender, printing_task) = setup();
+    let frame = widget.borrow_mut().create_element().draw();
+    frame_sender.send(frame)?;
     loop {
         if event::poll(Duration::default())? {
             let event = event::read()?;
@@ -66,18 +69,17 @@ pub fn render(widget: Component) -> Result<()> {
             {
                 match (modifiers, code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
-                        teardown()?;
-                        return Ok(());
+                        drop(frame_sender);
+                        return printing_task.await?;
                     }
                     _ => {}
                 }
                 widget.borrow_mut().on_keypress(&event);
             }
         }
-        let element_tree = widget.borrow_mut().create_element().draw();
-        print_frame(element_tree)?;
-        // tokio::time::sleep(Duration::from_millis(10)).await;
-        thread::sleep(Duration::from_millis(5));
+        let frame = widget.borrow_mut().create_element().draw();
+        frame_sender.send(frame)?;
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }
 

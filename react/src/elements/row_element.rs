@@ -1,4 +1,4 @@
-use crate::prelude::{Element, Frame, FrameExt, ensure_same_height};
+use crate::prelude::{Element, Frame, FrameExt};
 
 pub mod prelude {
     pub use super::RowElement;

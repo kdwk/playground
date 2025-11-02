@@ -1,8 +1,10 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::{RefCell, RefMut}, rc::Rc};
 
 use crossterm::event::KeyEvent;
+use stdext::prelude::go;
+use tokio::task::JoinHandle;
 
-use crate::{component::prelude::*, prelude::Element};
+use crate::{component::prelude::*, prelude::Element, runtime::extract_or_none};
 
 pub mod prelude {
     pub use super::Widget;
@@ -17,9 +19,7 @@ pub struct Widget<State> {
     create_element: Rc<dyn Fn(&mut Self) -> Box<dyn Element>>,
 }
 
-impl<State> Widget<State>
-where
-    State: 'static + PartialEq,
+impl<State> Widget<State> where State: 'static
 {
     pub fn stateful(
         state: State,
@@ -80,9 +80,33 @@ impl Widget<()> {
     }
 }
 
+
+impl<T: 'static> Widget<(JoinHandle<T>, Option<T>)> {
+    pub fn future(
+        task: JoinHandle<T>,
+        on_keypress: impl Fn(&mut Self, &KeyEvent) + 'static,
+        builder: impl Fn(&Option<T>) -> Component + 'static
+    ) -> Component {
+        Rc::new(RefCell::new(
+            Widget {
+                state: (task, None),
+                prev: None,
+                needs_rebuild: true,
+                builder: Box::new(move |(_, result)| builder(result)),
+                on_keypress: Rc::new(on_keypress),
+                create_element: Rc::new(|this| {
+                    let (task, result) = &mut this.state;
+                    if let None = result {
+                        *result = extract_or_none(task);
+                    }
+                    this._build().borrow_mut().create_element()
+                }),
+            }
+        ))
+    }
+}
+
 impl<State> _Component for Widget<State>
-where
-    State: PartialEq,
 {
     fn create_element(&mut self) -> Box<dyn Element> {
         (self.create_element.clone())(self)

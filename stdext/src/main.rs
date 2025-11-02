@@ -159,6 +159,7 @@ use std::{
     io::Write,
     ops::Sub,
     path::PathBuf,
+    pin::Pin,
     rc::Rc,
     sync::Arc,
     thread,
@@ -199,10 +200,11 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), anyhow::Error> {
-    let a = Rc::new(String::new());
-    *a += "abc";
+    // let a = Rc::new(String::new());
+    // *a += "abc";
     run_local(async {
-        async_exp::test::test11().await.discard();
+        // async_exp::test::test11().await.discard();
+        test17();
         Ok(())
     })
     .await
@@ -212,6 +214,29 @@ async fn main() -> Result<(), anyhow::Error> {
     // input::test::test1();
     // Ok(())
 }
+
+// fn main() {
+//     let rt = tokio::runtime::Runtime::new().unwrap();
+
+//     let mut join_handle_option = Some(rt.spawn(async {
+//         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+//         "Done"
+//     }));
+
+//     // GUI paint loop
+//     loop {
+//         // Paint a GUI on every frame...
+
+//         // If task finished, display it in the GUI
+//         if let Some(join_handle) = &mut join_handle_option {
+//             if join_handle.is_finished() {
+//                 let return_value = rt.block_on(join_handle).unwrap();
+//                 println!("Return value: {}", &return_value);
+//                 join_handle_option = None;
+//             }
+//         }
+//     }
+// }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
 struct A {
@@ -529,5 +554,28 @@ fn test16() {
     let mut generator = gen_num();
     for i in 0..20 {
         println!("{}", generator(&Context { is_clicked: i == 0 }));
+    }
+}
+
+fn test17() {
+    let a = task::spawn_local(async {
+        sleep(Duration::from_secs(3)).await;
+        println!("Finished waiting");
+        42
+    });
+    // let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    // let mut fut = Box::pin(a);
+    loop {
+        if a.is_finished() {
+            let rt = tokio::runtime::Handle::current();
+            let ret_val = thread::spawn(move || rt.block_on(a).unwrap())
+                .join()
+                .unwrap();
+            println!("{ret_val}");
+            break;
+        } else {
+            println!("Waiting");
+        }
+        thread::sleep(Duration::from_millis(500));
     }
 }
