@@ -1,5 +1,5 @@
 use crate::{
-    element::ensure_same_width,
+    element::{FrameExt, ensure_same_width},
     prelude::{Element, Frame},
 };
 
@@ -9,12 +9,17 @@ pub struct ColumnElement {
 
 impl Element for ColumnElement {
     fn draw(&self) -> Frame {
-        let mut children_frames = self
-            .children
+        self.children
             .iter()
-            .map(|child| child.draw())
-            .collect::<Vec<_>>();
-        ensure_same_width(&mut children_frames);
-        children_frames.into_iter().flatten().collect()
+            .map(|child| {
+                let mut frame = child.draw();
+                frame.align_width();
+                frame
+            })
+            .reduce(|mut acc, mut frame| {
+                acc.append(&mut frame);
+                acc
+            })
+            .unwrap_or_else(|| vec![vec![]])
     }
 }

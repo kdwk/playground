@@ -10,24 +10,22 @@ pub struct RowElement {
 
 impl Element for RowElement {
     fn draw(&self) -> Frame {
-        let mut children_frames = self
-            .children
+        self.children
             .iter()
-            .map(|child| child.draw())
-            .collect::<Vec<_>>();
-        ensure_same_height(&mut children_frames);
-        let new_height = children_frames
-            .get(0)
-            .and_then(|f| Some(f.height()))
-            .unwrap_or(0);
-        (0..new_height)
-            .map(|row_index| {
-                children_frames
-                    .iter()
-                    .map(|f| f[row_index].clone())
-                    .flatten()
-                    .collect()
+            .map(|child| {
+                let mut frame = child.draw();
+                frame.align_width();
+                frame
             })
-            .collect()
+            .reduce(|mut acc, mut frame| {
+                let max_height = std::cmp::max(acc.height(), frame.height());
+                acc.expand_to_height(max_height);
+                frame.expand_to_height(max_height);
+                for row_index in 0..max_height {
+                    acc[row_index].append(&mut frame[row_index]);
+                }
+                acc
+            })
+            .unwrap_or_else(|| vec![vec![]])
     }
 }

@@ -6,11 +6,16 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
     local_set.run_until(future).await
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    run_local(async {
-        render(text_field()).await?;
-        Ok(())
-    })
-    .await
+// #[tokio::main(flavor = "current_thread")]
+// async fn main() -> Result<()> {
+//     // run_local(async {
+//     //     render(text_field()).await?;
+//     //     // render(counter(1)).await?;
+//     //     Ok(())
+//     // })
+//     // .await
+// }
+
+fn main() -> Result<()> {
+    render(text_field())
 }

@@ -1,7 +1,6 @@
 use crate::{component::prelude::*, element::FrameExt, prelude::Frame};
 use std::{
-    io::{self, Write},
-    time::Duration,
+    io::{self, Write}, thread, time::Duration
 };
 
 use anyhow::Result;
@@ -52,7 +51,7 @@ fn teardown() -> Result<()> {
     Ok(())
 }
 
-pub async fn render(widget: Component) -> Result<()> {
+pub fn render(widget: Component) -> Result<()> {
     setup(widget.clone())?;
     let element_tree = widget.borrow_mut().create_element().draw();
     print_frame(element_tree)?;
@@ -77,7 +76,8 @@ pub async fn render(widget: Component) -> Result<()> {
         }
         let element_tree = widget.borrow_mut().create_element().draw();
         print_frame(element_tree)?;
-        tokio::time::sleep(Duration::from_millis(10)).await;
+        // tokio::time::sleep(Duration::from_millis(10)).await;
+        thread::sleep(Duration::from_millis(5));
     }
 }
 
