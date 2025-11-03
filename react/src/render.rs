@@ -1,6 +1,13 @@
-use crate::{component::prelude::*, element::FrameExt, prelude::Frame};
+use crate::{
+    component::prelude::*,
+    element::FrameExt,
+    prelude::Frame,
+    runtime::{go_block, wait_for},
+};
 use std::{
-    io::{self, Write}, thread, time::Duration
+    io::{self, Write},
+    thread,
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -13,7 +20,10 @@ use crossterm::{
         enable_raw_mode,
     },
 };
-use tokio::{sync::mpsc::{UnboundedSender, unbounded_channel}, task::JoinHandle};
+use tokio::{
+    sync::mpsc::{UnboundedSender, unbounded_channel},
+    task::JoinHandle,
+};
 
 pub mod prelude {
     pub use super::render;
@@ -38,7 +48,7 @@ fn print_frame(frame: Frame) -> Result<()> {
 
 fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
     let (sender, mut receiver) = unbounded_channel();
-    let printing_task = tokio::task::spawn_blocking(move || -> Result<()> {
+    let printing_task = go_block(move || -> Result<()> {
         let mut stdout = io::stdout();
         stdout.execute(EnterAlternateScreen)?;
         enable_raw_mode()?;
@@ -50,12 +60,11 @@ fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
         stdout.execute(LeaveAlternateScreen)?;
         Ok(())
     });
-    // _ = begin_listen_keypress(widget);
     (sender, printing_task)
 }
 
-pub async fn render(widget: Component) -> Result<()> {
-    let (frame_sender, printing_task) = setup();
+pub fn render(widget: Component) -> Result<()> {
+    let (frame_sender, mut printing_task) = setup();
     let frame = widget.borrow_mut().create_element().draw();
     frame_sender.send(frame)?;
     loop {
@@ -70,7 +79,7 @@ pub async fn render(widget: Component) -> Result<()> {
                 match (modifiers, code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                         drop(frame_sender);
-                        return printing_task.await?;
+                        return wait_for(&mut printing_task)?;
                     }
                     _ => {}
                 }
@@ -79,20 +88,6 @@ pub async fn render(widget: Component) -> Result<()> {
         }
         let frame = widget.borrow_mut().create_element().draw();
         frame_sender.send(frame)?;
-        tokio::time::sleep(Duration::from_millis(10)).await;
-    }
-}
-
-fn should_quit(event: &Event) -> bool {
-    if let Event::Key(KeyEvent {
-        code, modifiers, ..
-    }) = event
-    {
-        match (modifiers, code) {
-            (&KeyModifiers::CONTROL, &KeyCode::Char('c')) => true,
-            _ => false,
-        }
-    } else {
-        false
+        thread::sleep(Duration::from_millis(10));
     }
 }

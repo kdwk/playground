@@ -1,37 +1,24 @@
-use std::{fmt::Display, time::Duration};
-
-// use stdext::prelude::*;
+use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::{component::Component, runtime::go, widget::Widget, widgets::text::text};
-
-struct AlwaysRebuild<T>(T);
-impl<T> PartialEq for AlwaysRebuild<T> {
-    fn eq(&self, _other: &Self) -> bool {
-        false
-    }
-}
+use crate::prelude::{Component, Widget, column, counter, go, text};
 
 pub fn delayed() -> Component {
-    // let timer = go(async { sleep(Duration::from_secs(1)) });
-    // Widget::stateful(
-    //     AlwaysRebuild((timer, original.to_string(), change_to.to_string())),
-    //     |_, _| {},
-    //     move |AlwaysRebuild((timer, original, change_to))| {
-    //         if timer.is_finished() {
-    //             text(change_to.clone())
-    //         } else {
-    //             text(original.clone())
-    //         }
-    //     },
-    // )
-    let timer = go(sleep(Duration::from_secs(1)));
+    let timer = go(async {
+        sleep(Duration::from_secs(3)).await;
+        0
+    });
     Widget::future(
         timer,
         |_, _| {},
-        move |opt| match opt {
-            Some(_) => text("After"),
-            None => text("Before"),
+        |opt| {
+            column([
+                match opt {
+                    Some(_) => text("After"),
+                    None => text("Before"),
+                },
+                counter(1),
+            ])
         },
     )
 }

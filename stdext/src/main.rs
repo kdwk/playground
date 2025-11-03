@@ -189,6 +189,7 @@ use tokio::{
     join,
     runtime::Handle,
     select,
+    sync::mpsc::unbounded_channel,
     task::{self, JoinHandle, LocalSet},
     time::sleep,
 };
@@ -198,21 +199,67 @@ async fn run_local<T>(future: impl Future<Output = T>) -> T {
     local_set.run_until(future).await
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), anyhow::Error> {
-    // let a = Rc::new(String::new());
-    // *a += "abc";
-    run_local(async {
-        // async_exp::test::test11().await.discard();
-        test17();
-        Ok(())
-    })
-    .await
-    // react::test::test().await;
-    // linked_list::test::test2();
-    // substr::test::test1();
-    // input::test::test1();
-    // Ok(())
+// #[tokio::main(flavor = "current_thread")]
+// async fn main() -> Result<(), anyhow::Error> {
+//     // let a = Rc::new(String::new());
+//     // *a += "abc";
+//     run_local(async {
+//         // async_exp::test::test11().await.discard();
+//         test17().await;
+//         Ok(())
+//     })
+//     .await
+//     // react::test::test().await;
+//     // linked_list::test::test2();
+//     // substr::test::test1();
+//     // input::test::test1();
+//     // Ok(())
+// }
+
+thread_local! {
+    pub static RT: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+}
+
+fn main() {
+    test17();
+}
+
+struct AsyncTask<T> {
+    inner: JoinHandle<T>,
+    rt: tokio::runtime::Runtime,
+}
+
+fn go<T: 'static + Send + Sync>(
+    future: impl Future<Output = T> + Send + Sync + 'static,
+) -> JoinHandle<T> {
+    RT.with(|rt| rt.spawn(future))
+}
+
+fn extract_or_none<T>(handle: &mut JoinHandle<T>) -> Option<T> {
+    if handle.is_finished() {
+        RT.with(|rt| Some(rt.block_on(handle).unwrap()))
+    } else {
+        None
+    }
+}
+
+fn test17() {
+    // let (sender, receiver) = unbounded_channel();
+    let mut a = go(async {
+        sleep(Duration::from_secs(1)).await;
+        println!("Finished waiting");
+        42
+    });
+    let mut did_resolve = false;
+    // let mut context = std::task::Context::from_waker(std::task::Waker::noop());
+    // let mut fut = Box::pin(a);
+    while !did_resolve {
+        if let Some(res) = extract_or_none(&mut a) {
+            println!("{res}");
+            did_resolve = true;
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
 }
 
 // fn main() {
@@ -554,28 +601,5 @@ fn test16() {
     let mut generator = gen_num();
     for i in 0..20 {
         println!("{}", generator(&Context { is_clicked: i == 0 }));
-    }
-}
-
-fn test17() {
-    let a = task::spawn_local(async {
-        sleep(Duration::from_secs(3)).await;
-        println!("Finished waiting");
-        42
-    });
-    // let mut context = std::task::Context::from_waker(std::task::Waker::noop());
-    // let mut fut = Box::pin(a);
-    loop {
-        if a.is_finished() {
-            let rt = tokio::runtime::Handle::current();
-            let ret_val = thread::spawn(move || rt.block_on(a).unwrap())
-                .join()
-                .unwrap();
-            println!("{ret_val}");
-            break;
-        } else {
-            println!("Waiting");
-        }
-        thread::sleep(Duration::from_millis(500));
     }
 }

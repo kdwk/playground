@@ -12,3 +12,4 @@ stdext = { version = "0.1.0", path = "../stdext" }
 anyhow = "1.0.100"
 futures = "0.3.31"
 replace_with = "0.1.8"
+reqwest = "0.12.24"

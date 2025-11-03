@@ -74,7 +74,7 @@ impl<T> List<T> {
             Empty => ListRefIter::Empty,
         }
     }
-    pub fn iter_mut(&mut self) -> ListRefMutIter<T> {
+    pub fn iter_mut(&mut self) -> ListRefMutIter<'_, T> {
         match self {
             Cons(head, tail) => ListRefMutIter::Cons(Some(head), tail),
             Empty => ListRefMutIter::Empty,
