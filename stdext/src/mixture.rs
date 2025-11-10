@@ -9,7 +9,9 @@ use std::{
 use extend::ext;
 
 pub mod prelude {
-    pub use super::{Anything, AnythingExt, HashMapKeyAnythingaExt, Mixture, MixtureExt, any};
+    pub use super::{
+        Anything, AnythingExt, AnythingMutExt, HashMapKeyAnythingaExt, Mixture, MixtureExt, any,
+    };
 }
 
 #[macro_export]
@@ -62,37 +64,162 @@ impl<'a> MixtureExt for Mixture<'a> {
 }
 
 pub trait AnythingExt<'a> {
-    fn get<T: 'a>(&self) -> &T;
-    fn get_mut<T: 'a>(&mut self) -> &mut T;
+    #[inline]
+    fn get<T: 'a>(&self) -> &T {
+        self.try_get().unwrap()
+    }
     fn try_get<T: 'a>(&self) -> Option<&T>;
+    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>>;
+    #[inline]
+    fn default(&self, default_arm: impl FnOnce()) {
+        default_arm();
+    }
+}
+
+pub trait AnythingMutExt<'a>: AnythingExt<'a> {
+    #[inline]
+    fn get_mut<T: 'a>(&mut self) -> &mut T {
+        self.try_get_mut().unwrap()
+    }
     fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T>;
     fn set<T: 'a>(&mut self, value: T);
-    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool);
+    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>>;
 }
 
 impl<'a> AnythingExt<'a> for Anything<'a> {
-    fn get<T: 'a>(&self) -> &T {
-        (*self).downcast_ref().unwrap()
-    }
-    fn get_mut<T: 'a>(&mut self) -> &mut T {
-        (*self).downcast_mut().unwrap()
-    }
+    #[inline]
     fn try_get<T: 'a>(&self) -> Option<&T> {
-        (*self).downcast_ref()
+        self.downcast_ref()
     }
+    #[inline]
+    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
+        match self.try_get() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => Some(self),
+        }
+    }
+}
+
+impl<'a> AnythingMutExt<'a> for Anything<'a> {
+    #[inline]
     fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
-        (*self).downcast_mut()
+        self.downcast_mut()
     }
+    #[inline]
     fn set<T: 'a>(&mut self, value: T) {
         *self = any(value);
     }
-    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool) {
-        let mut matched = false;
-        if let Some(value) = self.try_get_mut::<T>() {
-            match_arm(value);
-            matched = true;
+    #[inline]
+    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
+        match self.try_get_mut() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => Some(self),
         }
-        (self, matched)
+    }
+}
+
+impl<'a> AnythingExt<'a> for Option<&Anything<'a>> {
+    #[inline]
+    fn try_get<T: 'a>(&self) -> Option<&T> {
+        self.and_then(|anything| anything.downcast_ref())
+    }
+    #[inline]
+    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
+        match self.try_get() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => *self,
+        }
+    }
+}
+
+impl<'a> AnythingExt<'a> for Option<&mut Anything<'a>> {
+    #[inline]
+    fn try_get<T: 'a>(&self) -> Option<&T> {
+        self.as_ref().and_then(|anything| anything.downcast_ref())
+    }
+    #[inline]
+    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
+        match self.try_get() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => self.as_ref().and_then(|ref_mut_ref| Some(&**ref_mut_ref)),
+        }
+    }
+}
+
+impl<'a> AnythingMutExt<'a> for Option<&mut Anything<'a>> {
+    #[inline]
+    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
+        self.as_mut().and_then(|anything| anything.downcast_mut())
+    }
+    #[inline]
+    fn set<T: 'a>(&mut self, value: T) {
+        if let Some(this) = self {
+            **this = any(value);
+        }
+    }
+    #[inline]
+    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
+        match self.try_get_mut() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => self
+                .as_mut()
+                .and_then(|mut_ref_mut_ref| Some(&mut **mut_ref_mut_ref)),
+        }
+    }
+}
+
+impl<'a> AnythingExt<'a> for Option<Anything<'a>> {
+    #[inline]
+    fn try_get<T: 'a>(&self) -> Option<&T> {
+        self.as_ref().and_then(|anything| anything.downcast_ref())
+    }
+    #[inline]
+    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
+        match self.try_get() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => (*self).as_ref(),
+        }
+    }
+}
+
+impl<'a> AnythingMutExt<'a> for Option<Anything<'a>> {
+    #[inline]
+    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
+        self.as_mut().and_then(|anything| anything.downcast_mut())
+    }
+    #[inline]
+    fn set<T: 'a>(&mut self, value: T) {
+        if let Some(this) = self {
+            *this = any(value);
+        }
+    }
+    #[inline]
+    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
+        match self.try_get_mut() {
+            Some(value) => {
+                match_arm(value);
+                None
+            }
+            None => (*self).as_mut(),
+        }
     }
 }
 
@@ -130,33 +257,6 @@ impl<'a, Key: Hash + Eq, Q: ?Sized> HashMap<Key, Anything<'a>> {
         Q: Hash + Eq,
     {
         Some(self.get_mut(&k)?.get_mut())
-    }
-}
-
-impl<'a> AnythingExt<'a> for (&mut Anything<'a>, bool) {
-    fn get<T: 'a>(&self) -> &T {
-        self.0.get()
-    }
-    fn get_mut<T: 'a>(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-    fn try_get<T: 'a>(&self) -> Option<&T> {
-        self.0.try_get()
-    }
-    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
-        self.0.try_get_mut()
-    }
-    fn set<T: 'a>(&mut self, value: T) {
-        self.0.set(value);
-    }
-    fn case<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> (&mut Anything<'a>, bool) {
-        if !self.1 {
-            if let Some(value) = self.try_get_mut::<T>() {
-                match_arm(value);
-                self.1 = true;
-            }
-        }
-        (self.0, self.1)
     }
 }
 

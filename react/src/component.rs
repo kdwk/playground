@@ -2,15 +2,16 @@ use std::{cell::RefCell, rc::Rc};
 
 use crossterm::event::KeyEvent;
 
-use crate::prelude::Element;
+use crate::prelude::{Element, Message};
 
 pub mod prelude {
     pub use super::{_Component, Component};
 }
 
 pub trait _Component {
+    fn id(&self) -> usize;
     fn create_element(&mut self) -> Box<dyn Element>;
-    fn on_keypress(&mut self, event: &KeyEvent);
+    fn on_message(&mut self, event: &Message);
 }
 
 pub type Component = Rc<RefCell<dyn _Component>>;

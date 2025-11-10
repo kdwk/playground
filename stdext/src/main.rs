@@ -136,6 +136,7 @@ mod compose;
 mod fruits;
 mod go;
 mod guard_map;
+mod inheritance;
 mod input;
 mod linked_list;
 mod map;
@@ -483,7 +484,7 @@ fn test9() {
     b[1].set(A { i: 4 });
     println!("{:?}", b[1].get::<A>());
     let c = mix!["abc", User(Pictures(&[])), A { i: 5 }];
-    for mut item in c {
+    for item in c {
         item.case::<i32>(|int| println!("It's an i32! {int}"))
             .case::<&str>(|string| println!("It's an &str! {string}"))
             .case::<Folder>(|folder| println!("{folder:?}"));

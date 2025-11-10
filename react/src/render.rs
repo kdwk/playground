@@ -1,19 +1,20 @@
 use crate::{
     component::prelude::*,
     element::FrameExt,
+    message::{handle_messages, send},
     prelude::Frame,
     runtime::{go_block, wait_for},
 };
 use std::{
     io::{self, Write},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
 use crossterm::{
     ExecutableCommand, QueueableCommand,
-    cursor::MoveTo,
+    cursor::{Hide, MoveTo, Show},
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     terminal::{
         Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
@@ -26,8 +27,10 @@ use tokio::{
 };
 
 pub mod prelude {
-    pub use super::render;
+    pub use super::{Tick, render};
 }
+
+pub struct Tick(pub Duration);
 
 fn print_frame(frame: Frame) -> Result<()> {
     let mut stdout = io::stdout();
@@ -36,11 +39,9 @@ fn print_frame(frame: Frame) -> Result<()> {
         if row_index >= u16::MAX as usize {
             break;
         }
-        for (col_index, c) in frame[row_index].iter().enumerate() {
-            stdout.queue(MoveTo(col_index as u16, row_index as u16))?;
-            print!("{c}");
-        }
-        // stdout.write(frame[row_index].iter().collect::<String>().as_bytes())?;
+        let s = frame[row_index].iter().collect::<String>();
+        stdout.queue(MoveTo(0, row_index as u16))?;
+        print!("{s}");
     }
     stdout.flush()?;
     Ok(())
@@ -50,14 +51,15 @@ fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
     let (sender, mut receiver) = unbounded_channel();
     let printing_task = go_block(move || -> Result<()> {
         let mut stdout = io::stdout();
-        stdout.execute(EnterAlternateScreen)?;
         enable_raw_mode()?;
+        stdout.execute(EnterAlternateScreen)?;
+        stdout.execute(Hide)?;
         while let Some(frame) = receiver.blocking_recv() {
             print_frame(frame)?;
         }
-        stdout.execute(Clear(ClearType::All))?;
-        disable_raw_mode()?;
+        stdout.execute(Show)?;
         stdout.execute(LeaveAlternateScreen)?;
+        disable_raw_mode()?;
         Ok(())
     });
     (sender, printing_task)
@@ -65,6 +67,7 @@ fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
 
 pub fn render(widget: Component) -> Result<()> {
     let (frame_sender, mut printing_task) = setup();
+    let start = Instant::now();
     let frame = widget.borrow_mut().create_element().draw();
     frame_sender.send(frame)?;
     loop {
@@ -81,11 +84,12 @@ pub fn render(widget: Component) -> Result<()> {
                         drop(frame_sender);
                         return wait_for(&mut printing_task)?;
                     }
-                    _ => {}
+                    _ => send(event),
                 }
-                widget.borrow_mut().on_keypress(&event);
             }
         }
+        send(Tick(start.elapsed()));
+        handle_messages(|msg| widget.borrow_mut().on_message(msg));
         let frame = widget.borrow_mut().create_element().draw();
         frame_sender.send(frame)?;
         thread::sleep(Duration::from_millis(10));
