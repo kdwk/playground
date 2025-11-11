@@ -1,0 +1,17 @@
+use crate::{
+    prelude::{Component, StringElement},
+    widget::Widget,
+};
+
+pub fn single_line(s: String) -> Component {
+    Widget::elemental(
+        s,
+        |_, _| {},
+        #[inline]
+        |this| {
+            Box::new(StringElement {
+                s: this.state.clone(),
+            })
+        },
+    )
+}

@@ -22,10 +22,10 @@ impl Element for RowElement {
                 acc.expand_to_height(max_height);
                 frame.expand_to_height(max_height);
                 for row_index in 0..max_height {
-                    acc[row_index].append(&mut frame[row_index]);
+                    acc[row_index] += &frame[row_index];
                 }
                 acc
             })
-            .unwrap_or_else(|| vec![vec![]])
+            .unwrap_or_else(|| vec!["".to_string()])
     }
 }

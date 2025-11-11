@@ -10,6 +10,6 @@ pub struct CharElement {
 
 impl Element for CharElement {
     fn draw(&self) -> Frame {
-        vec![vec![self.c]]
+        vec![self.c.to_string()]
     }
 }

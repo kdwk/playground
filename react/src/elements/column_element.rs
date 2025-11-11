@@ -3,6 +3,10 @@ use crate::{
     prelude::{Element, Frame},
 };
 
+pub mod prelude {
+    pub use super::ColumnElement;
+}
+
 pub struct ColumnElement {
     pub children: Vec<Box<dyn Element>>,
 }
@@ -20,6 +24,6 @@ impl Element for ColumnElement {
                 acc.append(&mut frame);
                 acc
             })
-            .unwrap_or_else(|| vec![vec![]])
+            .unwrap_or_else(|| vec!["".to_string()])
     }
 }

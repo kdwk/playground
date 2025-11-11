@@ -39,9 +39,8 @@ fn print_frame(frame: Frame) -> Result<()> {
         if row_index >= u16::MAX as usize {
             break;
         }
-        let s = frame[row_index].iter().collect::<String>();
         stdout.queue(MoveTo(0, row_index as u16))?;
-        print!("{s}");
+        print!("{}", frame[row_index]);
     }
     stdout.flush()?;
     Ok(())
