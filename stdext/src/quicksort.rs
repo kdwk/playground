@@ -1,5 +1,5 @@
 pub mod prelude {
-    pub use super::quicksort;
+    pub use super::{VecTExt, IExt, sorting_flap, quicksort};
 }
 
 use std::iter::Iterator;
@@ -22,7 +22,7 @@ pub fn quicksort<T: PartialOrd>(mut list: Vec<T>) -> Vec<T> {
     }
 }
 
-#[extend::ext]
+#[ext(pub)]
 impl<T> Vec<T> {
     #[inline]
     fn join_with(mut self, mut other: Vec<T>) -> Vec<T> {
@@ -36,7 +36,7 @@ impl<T> Vec<T> {
     }
 }
 
-#[ext]
+#[ext(pub)]
 impl<A, B, I: Iterator<Item = (Option<A>, Option<B>)>> I {
     #[inline]
     fn collect2_vec(mut self) -> (Vec<A>, Vec<B>) {
@@ -58,7 +58,7 @@ impl<A, B, I: Iterator<Item = (Option<A>, Option<B>)>> I {
 }
 
 #[inline]
-fn sorting_flap<T>(left_condition: impl Fn(&T) -> bool) -> impl Fn(T) -> (Option<T>, Option<T>) {
+pub fn sorting_flap<T>(left_condition: impl Fn(&T) -> bool) -> impl Fn(T) -> (Option<T>, Option<T>) {
     move |item| {
         if left_condition(&item) {
             (Some(item), None)

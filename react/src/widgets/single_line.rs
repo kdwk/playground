@@ -9,9 +9,9 @@ pub fn single_line(s: String) -> Component {
         |_, _| {},
         #[inline]
         |this| {
-            Box::new(StringElement {
+            (false, Box::new(StringElement {
                 s: this.state.clone(),
-            })
+            }))
         },
     )
 }

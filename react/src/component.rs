@@ -10,7 +10,7 @@ pub mod prelude {
 
 pub trait _Component {
     fn id(&self) -> usize;
-    fn create_element(&mut self) -> Box<dyn Element>;
+    fn create_element(&mut self) -> (bool, Box<dyn Element>);
     fn on_message(&mut self, event: &Message);
 }
 

@@ -27,7 +27,7 @@ pub struct Widget<State> {
     needs_rebuild: bool,
     builder: Box<dyn Fn(&State) -> Component>,
     on_message: Rc<dyn Fn(&mut Self, &Message)>,
-    create_element: Rc<dyn Fn(&mut Self) -> Box<dyn Element>>,
+    create_element: Rc<dyn Fn(&mut Self) -> (bool, Box<dyn Element>)>,
 }
 
 impl<State> Widget<State>
@@ -46,13 +46,17 @@ where
             needs_rebuild: true,
             builder: Box::new(builder),
             on_message: Rc::new(on_message),
-            create_element: Rc::new(|this| this._build().borrow_mut().create_element()),
+            create_element: Rc::new(|this| {
+                let (did_rebuild, widget) = this._build();
+                let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
+                (did_rebuild || did_child_rebuild, child_element)
+            }),
         }))
     }
     pub fn elemental(
         state: State,
         on_message: impl Fn(&mut Self, &Message) + 'static,
-        create_element: impl Fn(&mut Self) -> Box<dyn Element> + 'static,
+        create_element: impl Fn(&mut Self) -> (bool, Box<dyn Element>) + 'static,
     ) -> Component {
         Rc::new(RefCell::new(Widget {
             id: uid(),
@@ -64,16 +68,16 @@ where
             create_element: Rc::new(create_element),
         }))
     }
-    fn _build(&mut self) -> Component {
+    fn _build(&mut self) -> (bool, Component) {
         if !self.needs_rebuild
             && let Some(prev) = &self.prev
         {
-            prev.clone()
+            (false, prev.clone())
         } else {
             let new_widget = (self.builder)(&self.state);
             self.prev = Some(new_widget.clone());
             self.needs_rebuild = false;
-            new_widget
+            (true, new_widget)
         }
     }
     #[inline]
@@ -107,7 +111,9 @@ impl<T: 'static> Widget<(JoinHandle<T>, Option<T>)> {
                         None => {}
                     }
                 }
-                this._build().borrow_mut().create_element()
+                let (did_rebuild, widget) = this._build();
+                let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
+                (did_rebuild || did_child_rebuild, child_element)
             }),
         }))
     }
@@ -134,7 +140,7 @@ impl<State> _Component for Widget<State> {
         self.id
     }
     #[inline]
-    fn create_element(&mut self) -> Box<dyn Element> {
+    fn create_element(&mut self) -> (bool, Box<dyn Element>) {
         (self.create_element.clone())(self)
     }
     #[inline]

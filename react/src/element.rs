@@ -41,6 +41,6 @@ impl FrameExt for Frame {
     }
 }
 
-pub trait Element {
+pub trait Element: Send {
     fn draw(&self) -> Frame;
 }

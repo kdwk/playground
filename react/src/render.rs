@@ -1,6 +1,6 @@
 use crate::{
     component::prelude::*,
-    element::FrameExt,
+    element::{Element, FrameExt},
     message::{handle_messages, send},
     prelude::Frame,
     runtime::{go_block, wait_for},
@@ -46,29 +46,29 @@ fn print_frame(frame: Frame) -> Result<()> {
     Ok(())
 }
 
-fn setup() -> (UnboundedSender<Frame>, JoinHandle<Result<()>>) {
-    let (sender, mut receiver) = unbounded_channel();
-    let printing_task = go_block(move || -> Result<()> {
+fn setup() -> (UnboundedSender<Box<dyn Element>>, JoinHandle<Result<()>>) {
+    let (sender, mut receiver) = unbounded_channel::<Box<dyn Element>>();
+    let rendering_task = go_block(move || -> Result<()> {
         let mut stdout = io::stdout();
         enable_raw_mode()?;
         stdout.execute(EnterAlternateScreen)?;
         stdout.execute(Hide)?;
-        while let Some(frame) = receiver.blocking_recv() {
-            print_frame(frame)?;
+        while let Some(element) = receiver.blocking_recv() {
+            print_frame(element.draw())?;
         }
         stdout.execute(Show)?;
         stdout.execute(LeaveAlternateScreen)?;
         disable_raw_mode()?;
         Ok(())
     });
-    (sender, printing_task)
+    (sender, rendering_task)
 }
 
 pub fn render(widget: Component) -> Result<()> {
     let (frame_sender, mut printing_task) = setup();
     let start = Instant::now();
-    let frame = widget.borrow_mut().create_element().draw();
-    frame_sender.send(frame)?;
+    let (_, element) = widget.borrow_mut().create_element();
+    _ = frame_sender.send(element);
     loop {
         if event::poll(Duration::default())? {
             let event = event::read()?;
@@ -89,8 +89,10 @@ pub fn render(widget: Component) -> Result<()> {
         }
         send(Tick(start.elapsed()));
         handle_messages(|msg| widget.borrow_mut().on_message(msg));
-        let frame = widget.borrow_mut().create_element().draw();
-        frame_sender.send(frame)?;
+        let (did_rebuild, element) = widget.borrow_mut().create_element();
+        if did_rebuild {
+            _ = frame_sender.send(element);
+        }
         thread::sleep(Duration::from_millis(10));
     }
 }
