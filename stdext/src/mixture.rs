@@ -10,7 +10,7 @@ use extend::ext;
 
 pub mod prelude {
     pub use super::{
-        Anything, AnythingExt, AnythingMutExt, HashMapKeyAnythingaExt, Mixture, MixtureExt, any,
+        Anything, HashMapKeyAnythingaExt, Mixture, MixtureExt, any, switch, switch_mut,
     };
 }
 
@@ -63,162 +63,76 @@ impl<'a> MixtureExt for Mixture<'a> {
     }
 }
 
-pub trait AnythingExt<'a> {
-    #[inline]
-    fn get<T: 'a>(&self) -> &T {
-        self.try_get().unwrap()
-    }
-    fn try_get<T: 'a>(&self) -> Option<&T>;
-    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>>;
-    #[inline]
-    fn default(&self, default_arm: impl FnOnce()) {
-        default_arm();
-    }
+pub enum AnythingSwitcher<'a, Ret> {
+    BeforeMatch(&'a Box<dyn Any>),
+    AfterMatch(Ret),
 }
 
-pub trait AnythingMutExt<'a>: AnythingExt<'a> {
-    #[inline]
-    fn get_mut<T: 'a>(&mut self) -> &mut T {
-        self.try_get_mut().unwrap()
-    }
-    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T>;
-    fn set<T: 'a>(&mut self, value: T);
-    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>>;
+#[inline]
+pub fn switch<'a, Ret>(anything: &'a Anything) -> AnythingSwitcher<'a, Ret> {
+    AnythingSwitcher::BeforeMatch(anything)
 }
 
-impl<'a> AnythingExt<'a> for Anything<'a> {
+impl<'a, Ret> AnythingSwitcher<'a, Ret> {
     #[inline]
-    fn try_get<T: 'a>(&self) -> Option<&T> {
-        self.downcast_ref()
+    pub fn case<T: 'static>(self, match_arm: impl FnOnce(&T) -> Ret) -> Self {
+        match self {
+            Self::BeforeMatch(any) => match any.downcast_ref::<T>() {
+                Some(val) => Self::AfterMatch(match_arm(val)),
+                None => self,
+            },
+            Self::AfterMatch(_) => self,
+        }
     }
     #[inline]
-    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
-        match self.try_get() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => Some(self),
+    pub fn default(self, default_arm: impl FnOnce() -> Ret) -> Ret {
+        match self {
+            Self::BeforeMatch(_) => default_arm(),
+            Self::AfterMatch(ret) => ret,
+        }
+    }
+    #[inline]
+    pub fn ret(self) -> Option<Ret> {
+        match self {
+            Self::BeforeMatch(_) => None,
+            Self::AfterMatch(ret) => Some(ret),
         }
     }
 }
 
-impl<'a> AnythingMutExt<'a> for Anything<'a> {
-    #[inline]
-    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
-        self.downcast_mut()
-    }
-    #[inline]
-    fn set<T: 'a>(&mut self, value: T) {
-        *self = any(value);
-    }
-    #[inline]
-    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
-        match self.try_get_mut() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => Some(self),
-        }
-    }
+pub enum AnythingSwitcherMut<'a, Ret> {
+    BeforeMatch(&'a mut Box<dyn Any>),
+    AfterMatch(Ret),
 }
 
-impl<'a> AnythingExt<'a> for Option<&Anything<'a>> {
-    #[inline]
-    fn try_get<T: 'a>(&self) -> Option<&T> {
-        self.and_then(|anything| anything.downcast_ref())
-    }
-    #[inline]
-    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
-        match self.try_get() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => *self,
-        }
-    }
+#[inline]
+pub fn switch_mut<'a, Ret>(anything: &'a mut Anything) -> AnythingSwitcherMut<'a, Ret> {
+    AnythingSwitcherMut::BeforeMatch(anything)
 }
 
-impl<'a> AnythingExt<'a> for Option<&mut Anything<'a>> {
+impl<'a, Ret> AnythingSwitcherMut<'a, Ret> {
     #[inline]
-    fn try_get<T: 'a>(&self) -> Option<&T> {
-        self.as_ref().and_then(|anything| anything.downcast_ref())
-    }
-    #[inline]
-    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
-        match self.try_get() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => self.as_ref().and_then(|ref_mut_ref| Some(&**ref_mut_ref)),
-        }
-    }
-}
-
-impl<'a> AnythingMutExt<'a> for Option<&mut Anything<'a>> {
-    #[inline]
-    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
-        self.as_mut().and_then(|anything| anything.downcast_mut())
-    }
-    #[inline]
-    fn set<T: 'a>(&mut self, value: T) {
-        if let Some(this) = self {
-            **this = any(value);
+    pub fn case<T: 'static>(self, match_arm: impl FnOnce(&mut T) -> Ret) -> Self {
+        match self {
+            Self::BeforeMatch(any) => match any.downcast_mut::<T>() {
+                Some(val) => Self::AfterMatch(match_arm(val)),
+                None => Self::BeforeMatch(any),
+            },
+            Self::AfterMatch(_) => self,
         }
     }
     #[inline]
-    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
-        match self.try_get_mut() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => self
-                .as_mut()
-                .and_then(|mut_ref_mut_ref| Some(&mut **mut_ref_mut_ref)),
-        }
-    }
-}
-
-impl<'a> AnythingExt<'a> for Option<Anything<'a>> {
-    #[inline]
-    fn try_get<T: 'a>(&self) -> Option<&T> {
-        self.as_ref().and_then(|anything| anything.downcast_ref())
-    }
-    #[inline]
-    fn case<T: 'a>(&self, match_arm: impl FnOnce(&T)) -> Option<&Anything<'a>> {
-        match self.try_get() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => (*self).as_ref(),
-        }
-    }
-}
-
-impl<'a> AnythingMutExt<'a> for Option<Anything<'a>> {
-    #[inline]
-    fn try_get_mut<T: 'a>(&mut self) -> Option<&mut T> {
-        self.as_mut().and_then(|anything| anything.downcast_mut())
-    }
-    #[inline]
-    fn set<T: 'a>(&mut self, value: T) {
-        if let Some(this) = self {
-            *this = any(value);
+    pub fn default(self, default_arm: impl FnOnce() -> Ret) -> Ret {
+        match self {
+            Self::BeforeMatch(_) => default_arm(),
+            Self::AfterMatch(ret) => ret,
         }
     }
     #[inline]
-    fn case_mut<T: 'a>(&mut self, match_arm: impl FnOnce(&mut T)) -> Option<&mut Anything<'a>> {
-        match self.try_get_mut() {
-            Some(value) => {
-                match_arm(value);
-                None
-            }
-            None => (*self).as_mut(),
+    pub fn ret(self) -> Option<Ret> {
+        match self {
+            Self::BeforeMatch(_) => None,
+            Self::AfterMatch(ret) => Some(ret),
         }
     }
 }
@@ -242,21 +156,21 @@ impl<'a, Key: Hash + Eq, Q: ?Sized> HashMap<Key, Anything<'a>> {
         Key: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.get(&k).unwrap().get()
+        self.get(&k).unwrap().downcast_ref().unwrap()
     }
     fn try_get_any<Output>(&'a self, k: &Q) -> Option<&'a Output>
     where
         Key: Borrow<Q>,
         Q: Hash + Eq,
     {
-        Some(self.get(&k)?.get())
+        Some(self.get(&k)?.downcast_ref().unwrap())
     }
     fn try_get_any_mut<Output>(&'a mut self, k: &Q) -> Option<&'a mut Output>
     where
         Key: Borrow<Q>,
         Q: Hash + Eq,
     {
-        Some(self.get_mut(&k)?.get_mut())
+        Some(self.get_mut(&k)?.downcast_mut().unwrap())
     }
 }
 

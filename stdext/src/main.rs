@@ -481,13 +481,14 @@ fn test9() {
     let mut b = Mixture::new();
     b.add(3);
     b.add("hi");
-    b[1].set(A { i: 4 });
-    println!("{:?}", b[1].get::<A>());
+    b[1] = any(A { i: 4 });
+    println!("{:?}", b[1].downcast_ref::<A>());
     let c = mix!["abc", User(Pictures(&[])), A { i: 5 }];
     for item in c {
-        item.case::<i32>(|int| println!("It's an i32! {int}"))
-            .case::<&str>(|string| println!("It's an &str! {string}"))
-            .case::<Folder>(|folder| println!("{folder:?}"));
+        switch(&item)
+            .case(|int: &i32| println!("It's an i32! {int}"))
+            .case(|string: &&str| println!("It's an &str! {string}"))
+            .case(|folder: &Folder| println!("{folder:?}"));
     }
 }
 
