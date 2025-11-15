@@ -1,9 +1,14 @@
 use std::{cell::RefCell, rc::Rc};
 
+use stdext::prelude::switch;
 use tokio::task::JoinHandle;
 
 use crate::{
-    component::prelude::*, message::prelude::*, prelude::Element, runtime::extract_or_none,
+    component::prelude::*,
+    message::prelude::*,
+    prelude::Element,
+    render::Tick,
+    runtime::{extract_or_none, go},
 };
 
 pub mod prelude {
@@ -54,11 +59,7 @@ where
                     prev.borrow_mut().on_message(msg);
                 }
             }),
-            create_element: Rc::new(|this| {
-                let (did_rebuild, widget) = this._build();
-                let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
-                (did_rebuild || did_child_rebuild, child_element)
-            }),
+            create_element: Rc::new(create_child),
         }))
     }
     pub fn elemental(
@@ -95,39 +96,42 @@ where
     }
 }
 
-impl<T: 'static> Widget<(JoinHandle<T>, Option<T>)> {
+impl<T: 'static + Send + Sync> Widget<(JoinHandle<T>, Option<T>)> {
     pub fn future(
-        task: JoinHandle<T>,
+        task: impl Future<Output = T> + Send + Sync + 'static,
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&Option<T>) -> Component + 'static,
     ) -> Component {
         Rc::new(RefCell::new(Widget {
             id: uid(),
-            state: (task, None),
+            state: (go(task), None),
             prev: None,
             needs_rebuild: true,
             builder: Box::new(move |(_, result)| builder(result)),
             on_message: Rc::new(move |this, msg| {
+                switch(msg).case(|&Tick(_)| {
+                    let (task, result) = &mut this.state;
+                    if let None = result {
+                        if let Some(res) = extract_or_none(task) {
+                            this.set_state(|(_, result)| *result = Some(res));
+                        }
+                    }
+                });
                 if let Propagate = on_message(this, msg)
                     && let Some(prev) = &this.prev
                 {
                     prev.borrow_mut().on_message(msg);
                 }
             }),
-            create_element: Rc::new(|this| {
-                let (task, result) = &mut this.state;
-                if let None = result {
-                    if let Some(res) = extract_or_none(task) {
-                        *result = Some(res);
-                        this.needs_rebuild = true;
-                    }
-                }
-                let (did_rebuild, widget) = this._build();
-                let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
-                (did_rebuild || did_child_rebuild, child_element)
-            }),
+            create_element: Rc::new(create_child),
         }))
     }
+}
+
+fn create_child<T: 'static>(this: &mut Widget<T>) -> (bool, Box<dyn Element>) {
+    let (did_rebuild, widget) = this._build();
+    let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
+    (did_rebuild || did_child_rebuild, child_element)
 }
 
 // impl<T: 'static, Streamable: Stream<Item = T>> Widget<Stream> {
@@ -160,8 +164,8 @@ impl<State> _Component for Widget<State> {
     }
 }
 
-pub fn propagate(this: &mut Widget<Vec<Component>>, event: &Message) {
+pub fn propagate(this: &mut Widget<Vec<Component>>, msg: &Message) {
     this.state
         .iter()
-        .for_each(|child| child.borrow_mut().on_message(event));
+        .for_each(|child| child.borrow_mut().on_message(msg));
 }
