@@ -70,6 +70,7 @@ pub fn render(widget: Component) -> Result<()> {
     let (_, element) = widget.borrow_mut().create_element();
     _ = frame_sender.send(element);
     loop {
+        let tick_start = Instant::now();
         if event::poll(Duration::default())? {
             let event = event::read()?;
             if let Event::Key(
@@ -93,6 +94,6 @@ pub fn render(widget: Component) -> Result<()> {
         if did_rebuild {
             _ = frame_sender.send(element);
         }
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(10) - tick_start.elapsed());
     }
 }

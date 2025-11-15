@@ -2,7 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use tokio::task::JoinHandle;
 
-use crate::{component::prelude::*, message::Message, prelude::Element, runtime::extract_or_none};
+use crate::{
+    component::prelude::*, message::prelude::*, prelude::Element, runtime::extract_or_none,
+};
 
 pub mod prelude {
     pub use super::{Widget, propagate};
@@ -36,7 +38,7 @@ where
 {
     pub fn stateful(
         state: State,
-        on_message: impl Fn(&mut Self, &Message) + 'static,
+        on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&State) -> Component + 'static,
     ) -> Component {
         Rc::new(RefCell::new(Widget {
@@ -45,7 +47,13 @@ where
             prev: None,
             needs_rebuild: true,
             builder: Box::new(builder),
-            on_message: Rc::new(on_message),
+            on_message: Rc::new(move |this, msg| {
+                if let Propagate = on_message(this, msg)
+                    && let Some(prev) = &this.prev
+                {
+                    prev.borrow_mut().on_message(msg);
+                }
+            }),
             create_element: Rc::new(|this| {
                 let (did_rebuild, widget) = this._build();
                 let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
@@ -90,7 +98,7 @@ where
 impl<T: 'static> Widget<(JoinHandle<T>, Option<T>)> {
     pub fn future(
         task: JoinHandle<T>,
-        on_message: impl Fn(&mut Self, &Message) + 'static,
+        on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&Option<T>) -> Component + 'static,
     ) -> Component {
         Rc::new(RefCell::new(Widget {
@@ -99,16 +107,19 @@ impl<T: 'static> Widget<(JoinHandle<T>, Option<T>)> {
             prev: None,
             needs_rebuild: true,
             builder: Box::new(move |(_, result)| builder(result)),
-            on_message: Rc::new(on_message),
+            on_message: Rc::new(move |this, msg| {
+                if let Propagate = on_message(this, msg)
+                    && let Some(prev) = &this.prev
+                {
+                    prev.borrow_mut().on_message(msg);
+                }
+            }),
             create_element: Rc::new(|this| {
                 let (task, result) = &mut this.state;
                 if let None = result {
-                    match extract_or_none(task) {
-                        Some(res) => {
-                            *result = Some(res);
-                            this.needs_rebuild = true;
-                        }
-                        None => {}
+                    if let Some(res) = extract_or_none(task) {
+                        *result = Some(res);
+                        this.needs_rebuild = true;
                     }
                 }
                 let (did_rebuild, widget) = this._build();

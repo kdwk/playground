@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace]
-members = ["stdext", "puzzles", "react", "simple_server", "tcp_server"]
+members = ["stdext", "puzzles", "react", "simple_server", "tcp_server", "editor"]
 
 [profile.release]
 debug = true

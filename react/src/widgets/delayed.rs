@@ -1,7 +1,10 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
-use crate::prelude::{Component, Widget, column, counter, go, text};
+use crate::{
+    message::prelude::*,
+    prelude::{Component, Widget, column, counter, go, text},
+};
 
 pub fn delayed() -> Component {
     let timer = go(async {
@@ -10,7 +13,7 @@ pub fn delayed() -> Component {
     });
     Widget::future(
         timer,
-        |_, _| {},
+        |_, _| Propagate,
         |opt| {
             column([
                 match opt {

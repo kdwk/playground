@@ -1,9 +1,10 @@
 use std::f64::consts::PI;
 
 use crossterm::event::{KeyCode, KeyEvent};
-use stdext::prelude::AnythingExt;
+use stdext::prelude::*;
 
 use crate::{
+    message::prelude::*,
     prelude::{Component, column, text},
     render::Tick,
     widget::prelude::*,
@@ -13,11 +14,13 @@ pub fn animated_char() -> Component {
     Widget::stateful(
         0,
         |this, msg| {
-            msg.case::<Tick>(|_| this.set_state(|num_ticks| *num_ticks += 1))
+            switch(msg)
+                .case::<Tick>(|_| this.set_state(|num_ticks| *num_ticks += 1))
                 .case::<KeyEvent>(|event| match event.code {
                     KeyCode::Char(' ') => this.set_state(|num_ticks| *num_ticks = 0),
                     _ => {}
                 });
+            Propagate
         },
         |&num_ticks| {
             let c = ((num_ticks as f64 - 90.0) * PI / 180.0).sin();
