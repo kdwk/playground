@@ -77,9 +77,9 @@ impl<'a, Ret> AnythingSwitcher<'a, Ret> {
     #[inline]
     pub fn case<T: 'static>(self, match_arm: impl FnOnce(&T) -> Ret) -> Self {
         match self {
-            Self::BeforeMatch(any) => match any.downcast_ref::<T>() {
-                Some(val) => Self::AfterMatch(match_arm(val)),
-                None => self,
+            Self::BeforeMatch(any) => match any.is::<T>() {
+                true => Self::AfterMatch(match_arm(any.downcast_ref().unwrap())),
+                false => self,
             },
             Self::AfterMatch(_) => self,
         }
@@ -114,9 +114,9 @@ impl<'a, Ret> AnythingSwitcherMut<'a, Ret> {
     #[inline]
     pub fn case<T: 'static>(self, match_arm: impl FnOnce(&mut T) -> Ret) -> Self {
         match self {
-            Self::BeforeMatch(any) => match any.downcast_mut::<T>() {
-                Some(val) => Self::AfterMatch(match_arm(val)),
-                None => Self::BeforeMatch(any),
+            Self::BeforeMatch(any) => match any.is::<T>() {
+                true => Self::AfterMatch(match_arm(any.downcast_mut().unwrap())),
+                false => Self::BeforeMatch(any),
             },
             Self::AfterMatch(_) => self,
         }
