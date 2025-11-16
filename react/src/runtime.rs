@@ -1,7 +1,10 @@
 use std::fmt::Display;
 
 use documents::prelude::*;
-use tokio::task::{self, JoinError, JoinHandle};
+use tokio::{
+    sync::mpsc::UnboundedReceiver,
+    task::{self, JoinError, JoinHandle},
+};
 
 pub mod prelude {
     pub(crate) use super::log;
@@ -49,6 +52,25 @@ impl<T> Task<T> {
             }
             _ => false,
         }
+    }
+}
+
+pub struct Stream<T> {
+    pub receiver: UnboundedReceiver<T>,
+    pub(crate) next: Option<T>,
+}
+
+impl<T> Stream<T> {
+    pub fn check(&mut self) -> bool {
+        if self.receiver.is_empty() {
+            false
+        } else {
+            self.next = self.receiver.blocking_recv();
+            true
+        }
+    }
+    pub fn next(&self) -> Option<&T> {
+        self.next.as_ref()
     }
 }
 

@@ -1,14 +1,17 @@
 use std::{cell::RefCell, rc::Rc};
 
 use stdext::prelude::switch;
-use tokio::task::{JoinError, JoinHandle};
+use tokio::{
+    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+    task::{JoinError, JoinHandle},
+};
 
 use crate::{
     component::prelude::*,
     message::prelude::*,
     prelude::Element,
     render::Tick,
-    runtime::{Task, go},
+    runtime::{Stream, Task, go},
 };
 
 pub mod prelude {
@@ -131,20 +134,39 @@ fn create_child<T: 'static>(this: &mut Widget<T>) -> (bool, Box<dyn Element>) {
     (did_rebuild || did_child_rebuild, child_element)
 }
 
-// impl<T: 'static, Streamable: Stream<Item = T>> Widget<Stream> {
-//     pub fn stream(
-//         stream: Streamable,
-//         on_keypress: impl Fn(&mut Self, &KeyEvent) + 'static,
-//         builder: impl Fn(&Option<T>) -> Component + 'static
-//     ) -> Component {
-//         Rc::new(Cell::new(Widget {
-//             state: stream,
-//             prev: None,
-//             needs_rebuild: true,
-//             builder:
-//         }))
-//     }
-// }
+impl<T: 'static + Send + Sync> Widget<Stream<T>> {
+    pub fn stream<F: Future<Output = ()> + Send + Sync + 'static>(
+        generator: impl FnOnce(UnboundedSender<T>) -> F,
+        on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
+        builder: impl Fn(&Stream<T>) -> Component + 'static,
+    ) -> Component {
+        let (sender, receiver) = unbounded_channel();
+        go(generator(sender));
+        Rc::new(RefCell::new(Widget {
+            state: Stream {
+                receiver,
+                next: None,
+            },
+            prev: None,
+            needs_rebuild: true,
+            builder: Box::new(builder),
+            id: uid(),
+            on_message: Rc::new(move |this, msg| {
+                switch(msg).case(|&Tick(_)| {
+                    if this.state.check() {
+                        this.set_state(|_| {});
+                    }
+                });
+                if let Propagate = on_message(this, msg)
+                    && let Some(prev) = &this.prev
+                {
+                    prev.borrow_mut().on_message(msg);
+                }
+            }),
+            create_element: Rc::new(create_child),
+        }))
+    }
+}
 
 impl<State> _Component for Widget<State> {
     #[inline]

@@ -7,6 +7,7 @@ pub mod number;
 pub mod row;
 pub mod single_char;
 pub mod single_line;
+pub mod streamed_counter;
 pub mod text;
 pub mod text_field;
 pub mod timer;
