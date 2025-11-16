@@ -1,10 +1,11 @@
 use std::fmt::Display;
 
 use documents::prelude::*;
-use tokio::task::{self, JoinHandle};
+use tokio::task::{self, JoinError, JoinHandle};
 
 pub mod prelude {
-    pub use super::{extract_or_none, go, go_block, log, wait_for};
+    pub(crate) use super::log;
+    pub use super::{Task, go, go_block, wait_for};
 }
 
 thread_local! {
@@ -25,19 +26,38 @@ where
     RT.with(|rt| rt.spawn_blocking(f))
 }
 
-pub fn extract_or_none<T>(handle: &mut JoinHandle<T>) -> Option<T> {
-    if handle.is_finished() {
-        RT.with(|rt| Some(rt.block_on(handle).unwrap()))
-    } else {
-        None
+#[derive(Debug)]
+pub enum Task<T> {
+    Running(JoinHandle<T>),
+    Done(T),
+    Err(JoinError),
+}
+
+impl<T> Task<T> {
+    pub fn check(&mut self) -> bool {
+        match self {
+            Self::Running(join_handle) => {
+                if join_handle.is_finished() {
+                    match wait_for(join_handle) {
+                        Ok(res) => *self = Task::Done(res),
+                        Err(err) => *self = Task::Err(err),
+                    }
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
     }
 }
 
+#[inline]
 pub fn wait_for<T>(handle: &mut JoinHandle<T>) -> Result<T, task::JoinError> {
     RT.with(|rt| rt.block_on(handle))
 }
 
-pub fn log<T: Display>(s: T) -> T {
+pub(crate) fn log<T: Display>(s: T) -> T {
     with(
         &[Document::at_path(
             "./log.txt",

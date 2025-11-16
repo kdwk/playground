@@ -3,22 +3,22 @@ use tokio::time::sleep;
 
 use crate::{
     message::prelude::*,
-    prelude::{Component, Widget, column, counter, go, text},
+    prelude::{Component, Task, Widget, column, counter, go, text},
 };
 
-pub fn delayed() -> Component {
-    let timer = go(async {
-        sleep(Duration::from_secs(3)).await;
-        0
-    });
+pub fn delayed(secs: u64) -> Component {
     Widget::future(
-        timer,
+        async move {
+            sleep(Duration::from_secs(secs)).await;
+            ()
+        },
         |_, _| Propagate,
         |opt| {
             column([
                 match opt {
-                    Some(_) => text("After"),
-                    None => text("Before"),
+                    Task::Done(_) => text("After"),
+                    Task::Running(_) => text("Before"),
+                    Task::Err(_) => text("Error!"),
                 },
                 counter(1),
             ])

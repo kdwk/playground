@@ -1,14 +1,14 @@
 use std::{cell::RefCell, rc::Rc};
 
 use stdext::prelude::switch;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinError, JoinHandle};
 
 use crate::{
     component::prelude::*,
     message::prelude::*,
     prelude::Element,
     render::Tick,
-    runtime::{extract_or_none, go},
+    runtime::{Task, go},
 };
 
 pub mod prelude {
@@ -96,25 +96,22 @@ where
     }
 }
 
-impl<T: 'static + Send + Sync> Widget<(JoinHandle<T>, Option<T>)> {
+impl<T: 'static + Send + Sync> Widget<Task<T>> {
     pub fn future(
         task: impl Future<Output = T> + Send + Sync + 'static,
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
-        builder: impl Fn(&Option<T>) -> Component + 'static,
+        builder: impl Fn(&Task<T>) -> Component + 'static,
     ) -> Component {
         Rc::new(RefCell::new(Widget {
             id: uid(),
-            state: (go(task), None),
+            state: Task::Running(go(task)),
             prev: None,
             needs_rebuild: true,
-            builder: Box::new(move |(_, result)| builder(result)),
+            builder: Box::new(builder),
             on_message: Rc::new(move |this, msg| {
                 switch(msg).case(|&Tick(_)| {
-                    let (task, result) = &mut this.state;
-                    if let None = result {
-                        if let Some(res) = extract_or_none(task) {
-                            this.set_state(|(_, result)| *result = Some(res));
-                        }
+                    if this.state.check() {
+                        this.set_state(|_| {});
                     }
                 });
                 if let Propagate = on_message(this, msg)
