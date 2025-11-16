@@ -15,7 +15,7 @@ pub fn streamed_counter() -> Component {
             }
         },
         |_, _| Propagate,
-        |stream| match stream.next() {
+        |stream| match stream.current() {
             Some(i) => text(i.to_string()),
             None => text("0"),
         },

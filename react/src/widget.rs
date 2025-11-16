@@ -134,18 +134,18 @@ fn create_child<T: 'static>(this: &mut Widget<T>) -> (bool, Box<dyn Element>) {
     (did_rebuild || did_child_rebuild, child_element)
 }
 
-impl<T: 'static + Send + Sync> Widget<Stream<T>> {
-    pub fn stream<F: Future<Output = ()> + Send + Sync + 'static>(
+impl<T: 'static + Send + Sync, TaskRet: Send + Sync + 'static> Widget<Stream<T, TaskRet>> {
+    pub fn stream<F: Future<Output = TaskRet> + Send + Sync + 'static>(
         generator: impl FnOnce(UnboundedSender<T>) -> F,
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
-        builder: impl Fn(&Stream<T>) -> Component + 'static,
+        builder: impl Fn(&Stream<T, TaskRet>) -> Component + 'static,
     ) -> Component {
         let (sender, receiver) = unbounded_channel();
-        go(generator(sender));
         Rc::new(RefCell::new(Widget {
             state: Stream {
+                task: Task::Running(go(generator(sender))),
                 receiver,
-                next: None,
+                current: None,
             },
             prev: None,
             needs_rebuild: true,

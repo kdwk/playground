@@ -55,22 +55,42 @@ impl<T> Task<T> {
     }
 }
 
-pub struct Stream<T> {
-    pub receiver: UnboundedReceiver<T>,
-    pub(crate) next: Option<T>,
+impl<T> Drop for Task<T> {
+    fn drop(&mut self) {
+        match self {
+            Self::Running(join_handle) => join_handle.abort(),
+            _ => {}
+        }
+    }
 }
 
-impl<T> Stream<T> {
+pub struct Stream<T, TaskRet> {
+    pub task: Task<TaskRet>,
+    pub receiver: UnboundedReceiver<T>,
+    pub current: Option<T>,
+}
+
+impl<T, TaskRet> Stream<T, TaskRet> {
     pub fn check(&mut self) -> bool {
+        let did_task_status_change = self.task.check();
         if self.receiver.is_empty() {
-            false
+            did_task_status_change
         } else {
-            self.next = self.receiver.blocking_recv();
+            self.current = self.receiver.blocking_recv();
             true
         }
     }
-    pub fn next(&self) -> Option<&T> {
-        self.next.as_ref()
+    pub fn current(&self) -> Option<&T> {
+        self.current.as_ref()
+    }
+}
+
+impl<T, TaskRet> Drop for Stream<T, TaskRet> {
+    fn drop(&mut self) {
+        match &mut self.task {
+            Task::Running(handle) => handle.abort(),
+            _ => {}
+        }
     }
 }
 
