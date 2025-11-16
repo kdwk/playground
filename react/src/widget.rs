@@ -87,6 +87,7 @@ where
             (false, prev.clone())
         } else {
             let new_widget = (self.builder)(&self.state);
+            _ = self.prev.take();
             self.prev = Some(new_widget.clone());
             self.needs_rebuild = false;
             (true, new_widget)
