@@ -7,14 +7,14 @@ use stdext::prelude::*;
 
 pub fn app(file: Document) -> Component {
     Widget::stateful(
-        Rc::new(RefCell::new(file.content().unwrap_or("".to_string()))),
+        file.content().unwrap_or("".to_string()),
         move |this, msg| {
             switch(msg)
                 .case({
                     let mut file = file.clone();
                     move |event: &KeyEvent| match (event.modifiers, event.code) {
                         (KeyModifiers::CONTROL, KeyCode::Char('s')) => {
-                            _ = file.replace_with(this.state.borrow().as_bytes());
+                            _ = file.replace_with(this.state.as_bytes());
                             Intercept
                         }
                         _ => Propagate,
