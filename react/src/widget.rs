@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::RangeFrom, rc::Rc};
 
 use stdext::prelude::switch;
 use tokio::{
@@ -19,14 +19,15 @@ pub mod prelude {
 }
 
 thread_local! {
-    pub(crate) static COUNTER: RefCell<usize> = RefCell::new(0);
+    pub(crate) static COUNTER: RefCell<RangeFrom<usize>> = RefCell::new(0..);
 }
 
 pub fn uid() -> usize {
     COUNTER.with(|counter| {
-        let id = *counter.borrow();
-        *counter.borrow_mut() += 1;
-        id
+        counter
+            .borrow_mut()
+            .next()
+            .expect("Ran out of UIDs for Widgets")
     })
 }
 

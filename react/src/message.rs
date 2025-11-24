@@ -30,7 +30,7 @@ pub fn send<T: 'static>(message: T) {
     MESSAGE_QUEUE.with_borrow_mut(|queue| queue.push(any(message)));
 }
 
-pub fn handle_messages(f: impl Fn(&Message)) {
+pub fn handle_messages(mut f: impl FnMut(&Message)) {
     MESSAGE_QUEUE.with_borrow_mut(|queue| {
         while let Some(msg) = queue.pop() {
             f(&msg);

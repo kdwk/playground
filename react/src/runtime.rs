@@ -7,8 +7,7 @@ use tokio::{
 };
 
 pub mod prelude {
-    pub(crate) use super::log;
-    pub use super::{Task, go, go_block, wait_for};
+    pub use super::{Task, go, go_block, log, wait_for};
 }
 
 thread_local! {
@@ -99,17 +98,7 @@ pub fn wait_for<T>(handle: &mut JoinHandle<T>) -> Result<T, task::JoinError> {
     RT.with(|rt| rt.block_on(handle))
 }
 
-pub(crate) fn log<T: Display>(s: T) -> T {
-    with(
-        &[Document::at_path(
-            "./log.txt",
-            "log",
-            Create::OnlyIfNotExists,
-        )],
-        |mut d| {
-            d["log"].append(s.to_string().as_bytes())?;
-            Ok(())
-        },
-    );
+pub fn log<T: Display>(s: T) -> T {
+    eprintln!("{s}");
     s
 }

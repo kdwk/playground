@@ -286,28 +286,30 @@ fn test17() {
 //     }
 // }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
-struct A {
-    i: i32,
-}
+// #[derive(Debug, Serialize, Deserialize, PartialEq, Object, Clone, Hash, Eq, PartialOrd, Ord)]
+// struct A {
+//     i: i32,
+// }
 
-impl A {
-    fn a1(&mut self) {
-        self.i = 1;
-    }
-    fn b1(&mut self) {
-        self.i = 2;
-    }
-    fn c1(&mut self) {
-        self.i = 3;
-    }
-}
+// impl A {
+//     fn a1(&mut self) {
+//         self.i = 1;
+//     }
+//     fn b1(&mut self) {
+//         self.i = 2;
+//     }
+//     fn c1(&mut self) {
+//         self.i = 3;
+//     }
+// }
 
-#[derive(Debug, Clone, PartialEq, Enum, Hash, Eq, PartialOrd, Ord)]
-enum B {
-    Something,
-    SomethingElse,
-}
+// #[derive(Debug, Clone, PartialEq, Enum, Hash, Eq, PartialOrd, Ord)]
+// enum B {
+//     Something,
+//     SomethingElse,
+// }
+
+fn test18() {}
 
 fn test1() {
     with(
@@ -465,32 +467,32 @@ fn test7() {
     .discard();
 }
 
-fn test8() {
-    let a = A { i: 0 }
-        .apply(|b| b.a1())
-        .apply(|b| b.b1())
-        .apply(|b| b.c1());
-    println!("{}", a.i);
-}
-fn test9() {
-    let a = mix![
-        1,
-        "hi",
-        Document::at(User(Documents(&[])), "bytes.pdf", Create::No)
-    ];
-    let mut b = Mixture::new();
-    b.add(3);
-    b.add("hi");
-    b[1] = any(A { i: 4 });
-    println!("{:?}", b[1].downcast_ref::<A>());
-    let c = mix!["abc", User(Pictures(&[])), A { i: 5 }];
-    for item in c {
-        switch(&item)
-            .case(|int: &i32| println!("It's an i32! {int}"))
-            .case(|string: &&str| println!("It's an &str! {string}"))
-            .case(|folder: &Folder| println!("{folder:?}"));
-    }
-}
+// fn test8() {
+//     let a = A { i: 0 }
+//         .apply(|b| b.a1())
+//         .apply(|b| b.b1())
+//         .apply(|b| b.c1());
+//     println!("{}", a.i);
+// }
+// fn test9() {
+//     let a = mix![
+//         1,
+//         "hi",
+//         Document::at(User(Documents(&[])), "bytes.pdf", Create::No)
+//     ];
+//     let mut b = Mixture::new();
+//     b.add(3);
+//     b.add("hi");
+//     b[1] = any(A { i: 4 });
+//     println!("{:?}", b[1].downcast_ref::<A>());
+//     let c = mix!["abc", User(Pictures(&[])), A { i: 5 }];
+//     for item in c {
+//         switch(&item)
+//             .case(|int: &i32| println!("It's an i32! {int}"))
+//             .case(|string: &&str| println!("It's an &str! {string}"))
+//             .case(|folder: &Folder| println!("{folder:?}"));
+//     }
+// }
 
 async fn test10() -> String {
     let result1 = task::spawn(async {
@@ -522,9 +524,9 @@ fn test12() {
 }
 
 fn test13() {
-    for variant in B::variants() {
-        println!("{variant:?}");
-    }
+    // for variant in B::variants() {
+    //     println!("{variant:?}");
+    // }
     with(
         &[Document::at(
             User(Home(&[])),

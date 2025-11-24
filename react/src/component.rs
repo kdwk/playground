@@ -1,7 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crossterm::event::KeyEvent;
-
 use crate::prelude::{Element, Message};
 
 pub mod prelude {

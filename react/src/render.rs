@@ -32,7 +32,7 @@ pub mod prelude {
 
 pub struct Tick(pub Duration);
 
-fn print_frame(frame: Frame) -> Result<()> {
+fn print_frame(frame: Frame) -> std::io::Result<()> {
     let mut stdout = io::stdout();
     stdout.queue(Clear(ClearType::All))?;
     for row_index in 0..frame.height() {
@@ -46,9 +46,12 @@ fn print_frame(frame: Frame) -> Result<()> {
     Ok(())
 }
 
-fn setup() -> (UnboundedSender<Box<dyn Element>>, JoinHandle<Result<()>>) {
+fn setup() -> (
+    UnboundedSender<Box<dyn Element>>,
+    std::thread::JoinHandle<std::io::Result<()>>,
+) {
     let (sender, mut receiver) = unbounded_channel::<Box<dyn Element>>();
-    let rendering_task = go_block(move || -> Result<()> {
+    let rendering_task = thread::spawn(move || -> std::io::Result<()> {
         let mut stdout = io::stdout();
         enable_raw_mode()?;
         stdout.execute(EnterAlternateScreen)?;
@@ -64,8 +67,8 @@ fn setup() -> (UnboundedSender<Box<dyn Element>>, JoinHandle<Result<()>>) {
     (sender, rendering_task)
 }
 
-pub fn render(widget: Component) -> Result<()> {
-    let (frame_sender, mut printing_task) = setup();
+pub fn render(widget: Component) -> std::io::Result<()> {
+    let (frame_sender, rendering_task) = setup();
     let start = Instant::now();
     let (_, element) = widget.borrow_mut().create_element();
     _ = frame_sender.send(element);
@@ -82,7 +85,7 @@ pub fn render(widget: Component) -> Result<()> {
                 match (modifiers, code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                         drop(frame_sender);
-                        return wait_for(&mut printing_task)?;
+                        return rendering_task.join().expect("Failed to join printing task");
                     }
                     _ => send(event),
                 }

@@ -33,10 +33,9 @@ impl FrameExt for Frame {
         let width = self.first_width();
         let diff = target - self.height();
         if diff > 0 {
-            self.append(&mut vec![
-                std::iter::repeat_n(' ', width).collect::<String>();
-                diff
-            ]);
+            for _ in 0..diff {
+                self.push(std::iter::repeat_n(' ', width).collect::<String>());
+            }
         }
     }
 }

@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use documents::prelude::*;
 use react::prelude::*;

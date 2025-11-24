@@ -1,9 +1,11 @@
 use std::fmt::Display;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use stdext::prelude::*;
 
-use crate::{component::prelude::*, message::prelude::*, widget::Widget, widgets::text::text};
+use crate::{
+    component::prelude::*, message::prelude::*, runtime::log, widget::Widget, widgets::text::text,
+};
 
 #[derive(Debug, Clone)]
 struct TextField {
@@ -35,6 +37,25 @@ impl TextField {
     fn move_cursor_right(&mut self) {
         if self.cursor < self.buffer.len() {
             self.cursor += 1;
+        }
+    }
+    // does not work
+    fn remove_word_left(&mut self) {
+        let space_idx = self
+            .buffer
+            .chars()
+            .enumerate()
+            .filter_map(|(i, c)| {
+                if c == ' ' && i < self.cursor {
+                    Some(i)
+                } else {
+                    None
+                }
+            })
+            .max()
+            .unwrap_or(0);
+        while self.cursor > space_idx {
+            self.remove_left();
         }
     }
 }
