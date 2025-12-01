@@ -10,6 +10,6 @@ pub struct StringElement {
 
 impl Element for StringElement {
     fn draw(&self) -> Frame {
-        vec![self.s.clone()]
+        vec![self.s.chars().collect()]
     }
 }

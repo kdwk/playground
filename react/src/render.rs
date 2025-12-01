@@ -40,7 +40,7 @@ fn print_frame(frame: Frame) -> std::io::Result<()> {
             break;
         }
         stdout.queue(MoveTo(0, row_index as u16))?;
-        print!("{}", frame[row_index]);
+        print!("{}", frame[row_index].iter().collect::<String>());
     }
     stdout.flush()?;
     Ok(())
@@ -85,7 +85,11 @@ pub fn render(widget: Component) -> std::io::Result<()> {
                 match (modifiers, code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                         drop(frame_sender);
-                        return rendering_task.join().expect("Failed to join printing task");
+                        rendering_task
+                            .join()
+                            .expect("Failed to join printing task")?;
+                        dbg!(widget.borrow());
+                        return Ok(());
                     }
                     _ => send(event),
                 }

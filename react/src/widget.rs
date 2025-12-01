@@ -1,4 +1,4 @@
-use std::{cell::RefCell, ops::RangeFrom, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, ops::RangeFrom, rc::Rc};
 
 use stdext::prelude::switch;
 use tokio::{
@@ -39,6 +39,17 @@ pub struct Widget<State> {
     builder: Box<dyn Fn(&State) -> Component>,
     on_message: Rc<dyn Fn(&mut Self, &Message)>,
     create_element: Rc<dyn Fn(&mut Self) -> (bool, Box<dyn Element>)>,
+}
+
+impl<State> Debug for Widget<State> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Contains prev: {}; Child: {:?}",
+            self.prev.is_some(),
+            self.prev
+        )
+    }
 }
 
 impl<State> Widget<State>
@@ -88,7 +99,6 @@ where
             (false, prev.clone())
         } else {
             let new_widget = (self.builder)(&self.state);
-            _ = self.prev.take();
             self.prev = Some(new_widget.clone());
             self.needs_rebuild = false;
             (true, new_widget)

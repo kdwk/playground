@@ -2,7 +2,7 @@ pub mod prelude {
     pub use super::{Element, Frame, FrameExt};
 }
 
-pub type Frame = Vec<String>;
+pub type Frame = Vec<Vec<char>>;
 
 pub trait FrameExt {
     fn height(&self) -> usize;
@@ -20,13 +20,13 @@ impl FrameExt for Frame {
         self.get(0).and_then(|row| Some(row.len())).unwrap_or(0)
     }
     fn max_width(&self) -> usize {
-        self.iter().map(String::len).max().unwrap_or(0)
+        self.iter().map(Vec::len).max().unwrap_or(0)
     }
     fn align_width(&mut self) {
         let max_width = self.max_width();
         for row in self.iter_mut() {
             let diff = max_width - row.len();
-            *row += &(std::iter::repeat_n(' ', diff).collect::<String>());
+            row.append(&mut (std::iter::repeat_n(' ', diff).collect::<Vec<_>>()));
         }
     }
     fn expand_to_height(&mut self, target: usize) {
@@ -34,7 +34,7 @@ impl FrameExt for Frame {
         let diff = target - self.height();
         if diff > 0 {
             for _ in 0..diff {
-                self.push(std::iter::repeat_n(' ', width).collect::<String>());
+                self.push(std::iter::repeat_n(' ', width).collect::<Vec<_>>());
             }
         }
     }

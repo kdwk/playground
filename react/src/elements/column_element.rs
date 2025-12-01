@@ -24,6 +24,6 @@ impl Element for ColumnElement {
                 acc.append(&mut frame);
                 acc
             })
-            .unwrap_or_else(|| vec!["".to_string()])
+            .unwrap_or_else(|| vec![vec![]])
     }
 }
