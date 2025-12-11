@@ -1,6 +1,6 @@
 use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
-use crate::prelude::{Element, Message};
+use crate::{element::Element, prelude::Message};
 
 pub mod prelude {
     pub use super::{_Component, Component};

@@ -1,26 +1,28 @@
-use std::ops::{Add, Sub};
+use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
-use crate::element::Frame;
+use crate::frame::Frame;
 
-pub mod prelude {}
+pub mod prelude {
+    pub use super::{Direction, DisplayList, Operation, Point, Size, Vec2};
+}
 
 #[derive(Debug, Clone, Copy, Hash, Default, PartialEq)]
 pub struct Vec2 {
-    pub x: usize,
-    pub y: usize,
+    pub x: isize,
+    pub y: isize,
 }
 
 impl Vec2 {
     pub fn adjacent(self, direction: Direction) -> Option<Self> {
         Some(Self {
             x: match direction {
-                Direction::Start => self.x.checked_sub(1)?,
-                Direction::End => self.x.checked_add(1)?,
+                Direction::Start => self.x - 1,
+                Direction::End => self.x + 1,
                 _ => self.x,
             },
             y: match direction {
-                Direction::Up => self.y.checked_sub(1)?,
-                Direction::Down => self.y.checked_add(1)?,
+                Direction::Up => self.y - 1,
+                Direction::Down => self.y + 1,
                 _ => self.y,
             },
         })
@@ -41,12 +43,34 @@ impl Add for Vec2 {
     }
 }
 
+impl AddAssign for Vec2 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
 impl Sub for Vec2 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
             x: self.x - rhs.x,
             y: self.y - rhs.y,
+        }
+    }
+}
+
+impl SubAssign for Vec2 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl Neg for Vec2 {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self {
+            x: -self.x,
+            y: -self.y,
         }
     }
 }
@@ -67,52 +91,57 @@ pub enum Operation {
     PutChar(char),
     MoveTo(Point),
     Move(Direction),
+    SetAnchor(Point),
 }
 
 impl Operation {
-    pub fn realize(
-        self,
-        anchor: &Point,
-        offset: &mut Point,
-        buffer: &mut Frame,
-        constraint: &Size,
-    ) {
+    pub fn realize(self, anchor: &mut Point, offset: &mut Point, buffer: &mut Frame) {
         match self {
             Operation::PutChar(c) => {
-                if offset.within_constraint(constraint) {
-                    let target = *anchor + *offset;
-                    if let Some(row) = buffer.get_mut(target.y) {
-                        if let Some(col) = row.get_mut(target.x) {
-                            *col = c;
-                        }
+                let target = *anchor + *offset;
+                if target.y >= 0
+                    && let Some(row) = buffer.get_mut(target.y as usize)
+                {
+                    if target.x >= 0
+                        && let Some(col) = row.get_mut(target.x as usize)
+                    {
+                        *col = c;
                     }
                 }
             }
-            Operation::MoveTo(Point { x, y }) => {
-                *offset = Point {
-                    x: std::cmp::min(x, constraint.x - 1),
-                    y: std::cmp::min(y, constraint.y - 1),
-                }
+            Operation::MoveTo(point) => {
+                *offset = point;
             }
             Operation::Move(direction) => {
                 if let Some(new_offset) = offset.adjacent(direction) {
                     *offset = new_offset;
                 }
             }
+            Operation::SetAnchor(point) => {
+                *anchor += point;
+                *offset = Point::default();
+            }
         }
     }
 }
 
-pub struct DisplayList<Operations: IntoIterator<Item = Operation>>(Operations);
+#[derive(Debug, Clone, Default)]
+pub struct DisplayList(pub Vec<Operation>);
 
-impl<Operations: IntoIterator<Item = Operation>> DisplayList<Operations> {
-    fn draw_on(self, buffer: &mut Frame, constraint: Size, anchor: Point) {
+impl<T: Into<Vec<Operation>>> From<T> for DisplayList {
+    fn from(value: T) -> Self {
+        Self(value.into())
+    }
+}
+
+impl DisplayList {
+    pub fn draw_on(self, buffer: &mut Frame) {
+        let mut anchor = Point::default();
         let mut offset = Point::default();
         self.0
             .into_iter()
-            .for_each(|op| op.realize(&anchor, &mut offset, buffer, &constraint));
+            .for_each(|op| op.realize(&mut anchor, &mut offset, buffer));
     }
-    fn merge_with(&mut self, other: DisplayList<impl IntoIterator<Item = Operation>>,)
 }
 
 #[cfg(test)]
@@ -123,7 +152,7 @@ mod test {
     #[test]
     fn test6() {
         let mut buffer = vec![vec![' '; 5]; 5];
-        DisplayList([]).draw_on(&mut buffer, Size { x: 3, y: 3 }, Point { x: 2, y: 1 });
+        DisplayList::default().draw_on(&mut buffer);
         buffer.must_be(vec![
             vec![' ', ' ', ' ', ' ', ' '],
             vec![' ', ' ', ' ', ' ', ' '],
@@ -135,11 +164,7 @@ mod test {
     #[test]
     fn test7() {
         let mut buffer = vec![vec![' '; 5]; 5];
-        DisplayList([Operation::PutChar('a')]).draw_on(
-            &mut buffer,
-            Size { x: 3, y: 3 },
-            Point { x: 2, y: 1 },
-        );
+        DisplayList::from([Operation::PutChar('a')]).draw_on(&mut buffer);
         buffer.must_be(vec![
             vec![' ', ' ', ' ', ' ', ' '],
             vec![' ', ' ', 'a', ' ', ' '],
@@ -151,17 +176,17 @@ mod test {
     #[test]
     fn test8() {
         let mut buffer = vec![vec![' '; 5]; 5];
-        DisplayList([
+        DisplayList(vec![
             Operation::PutChar('a'),
             Operation::Move(Direction::End),
             Operation::PutChar('b'),
             Operation::Move(Direction::End),
             Operation::PutChar('c'),
         ])
-        .draw_on(&mut buffer, Size { x: 2, y: 3 }, Point { x: 2, y: 1 });
+        .draw_on(&mut buffer);
         buffer.must_be(vec![
             vec![' ', ' ', ' ', ' ', ' '],
-            vec![' ', ' ', 'a', 'b', ' '],
+            vec![' ', ' ', 'a', 'b', 'c'],
             vec![' ', ' ', ' ', ' ', ' '],
             vec![' ', ' ', ' ', ' ', ' '],
             vec![' ', ' ', ' ', ' ', ' '],

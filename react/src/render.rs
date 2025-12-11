@@ -1,9 +1,7 @@
 use crate::{
     component::prelude::*,
-    element::{Element, FrameExt},
     message::{handle_messages, send},
-    prelude::Frame,
-    runtime::{go_block, wait_for},
+    prelude::{DisplayList, Element, Frame, FrameExt, Size},
 };
 use std::{
     io::{self, Write},
@@ -57,7 +55,18 @@ fn setup() -> (
         stdout.execute(EnterAlternateScreen)?;
         stdout.execute(Hide)?;
         while let Some(element) = receiver.blocking_recv() {
-            print_frame(element.draw())?;
+            let (cols, rows) = crossterm::terminal::size()?;
+            let mut display_list = DisplayList::default();
+            element.draw(
+                Size {
+                    x: cols as isize,
+                    y: rows as isize,
+                },
+                &mut display_list,
+            );
+            let mut frame = vec![vec![' '; cols as usize]; rows as usize];
+            display_list.draw_on(&mut frame);
+            print_frame(frame)?;
         }
         stdout.execute(Show)?;
         stdout.execute(LeaveAlternateScreen)?;
