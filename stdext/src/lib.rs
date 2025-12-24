@@ -9,6 +9,7 @@ pub mod quicksort;
 pub mod recipe;
 pub mod substr;
 pub mod whoops;
+pub mod wrap;
 
 pub mod prelude {
     pub use super::assertion::prelude::*;
@@ -21,6 +22,7 @@ pub mod prelude {
     pub use super::recipe::prelude::*;
     pub use super::substr::prelude::*;
     pub use super::whoops::prelude::*;
+    pub use super::wrap::wrap;
     pub use super::{link, linked_list::prelude::*};
     pub use anyhow::Result;
     pub use tokio::task::{LocalSet, spawn_local as go};
