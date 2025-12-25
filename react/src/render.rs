@@ -1,9 +1,8 @@
 use crate::{
     component::prelude::*,
-    element::{Element, FrameExt},
+    frame::{Token, TokensExt},
     message::{handle_messages, send},
-    prelude::Frame,
-    runtime::{go_block, wait_for},
+    prelude::{DisplayList, Element, Frame, FrameExt, Size},
 };
 use std::{
     io::{self, Write},
@@ -11,7 +10,6 @@ use std::{
     time::{Duration, Instant},
 };
 
-use anyhow::Result;
 use crossterm::{
     ExecutableCommand, QueueableCommand,
     cursor::{Hide, MoveTo, Show},
@@ -21,10 +19,7 @@ use crossterm::{
         enable_raw_mode,
     },
 };
-use tokio::{
-    sync::mpsc::{UnboundedSender, unbounded_channel},
-    task::JoinHandle,
-};
+use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
 
 pub mod prelude {
     pub use super::{Tick, render};
@@ -40,7 +35,7 @@ fn print_frame(frame: Frame) -> std::io::Result<()> {
             break;
         }
         stdout.queue(MoveTo(0, row_index as u16))?;
-        print!("{}", frame[row_index]);
+        print!("{}", frame[row_index].to_string());
     }
     stdout.flush()?;
     Ok(())
@@ -57,7 +52,18 @@ fn setup() -> (
         stdout.execute(EnterAlternateScreen)?;
         stdout.execute(Hide)?;
         while let Some(element) = receiver.blocking_recv() {
-            print_frame(element.draw())?;
+            let (cols, rows) = crossterm::terminal::size()?;
+            let mut display_list = DisplayList::default();
+            element.draw(
+                Size {
+                    x: cols as isize,
+                    y: rows as isize,
+                },
+                &mut display_list,
+            );
+            let mut frame = vec![vec![Token::Char(' '); cols as usize]; rows as usize];
+            display_list.draw_on(&mut frame);
+            print_frame(frame)?;
         }
         stdout.execute(Show)?;
         stdout.execute(LeaveAlternateScreen)?;
@@ -85,7 +91,10 @@ pub fn render(widget: Component) -> std::io::Result<()> {
                 match (modifiers, code) {
                     (KeyModifiers::CONTROL, KeyCode::Char('c')) => {
                         drop(frame_sender);
-                        return rendering_task.join().expect("Failed to join printing task");
+                        rendering_task
+                            .join()
+                            .expect("Failed to join printing task")?;
+                        return Ok(());
                     }
                     _ => send(event),
                 }

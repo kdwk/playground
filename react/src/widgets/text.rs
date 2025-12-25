@@ -1,13 +1,20 @@
-use crate::{
-    component::prelude::*,
-    prelude::{column, single_line},
-};
+use std::fmt::Display;
+
+use crate::{component::prelude::*, prelude::StringElement, widget::Widget};
 
 #[inline]
-pub fn text(s: impl AsRef<str> + 'static) -> Component {
-    column(
-        s.as_ref()
-            .split("\n")
-            .map(|line| single_line(line.to_string())),
+pub fn text(s: impl Display + 'static) -> Component {
+    Widget::elemental(
+        s.to_string(),
+        |_, _| {},
+        |this| {
+            (
+                false,
+                Box::new(StringElement {
+                    s: this.state.clone(),
+                    cursor: None,
+                }),
+            )
+        },
     )
 }

@@ -1,4 +1,4 @@
-use crate::prelude::{Element, Frame};
+use crate::prelude::{DisplayList, Element, Frame, Operation, Size};
 
 pub mod prelude {
     pub use super::CharElement;
@@ -9,7 +9,7 @@ pub struct CharElement {
 }
 
 impl Element for CharElement {
-    fn draw(&self) -> Frame {
-        vec![self.c.to_string()]
+    fn draw(&self, _constraint: Size, display_list: &mut DisplayList) {
+        display_list.0.push(Operation::PutChar(self.c));
     }
 }
