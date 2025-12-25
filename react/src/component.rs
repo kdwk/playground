@@ -1,12 +1,12 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, rc::Rc};
 
-use crate::prelude::{Element, Message};
+use crate::{element::Element, prelude::Message};
 
 pub mod prelude {
     pub use super::{_Component, Component};
 }
 
-pub trait _Component {
+pub trait _Component: Debug {
     fn id(&self) -> usize;
     fn create_element(&mut self) -> (bool, Box<dyn Element>);
     fn on_message(&mut self, event: &Message);

@@ -1,4 +1,4 @@
-use crate::prelude::{Element, Frame, FrameExt};
+use crate::prelude::{DisplayList, Element, Operation, Point, Size};
 
 pub mod prelude {
     pub use super::RowElement;
@@ -9,23 +9,24 @@ pub struct RowElement {
 }
 
 impl Element for RowElement {
-    fn draw(&self) -> Frame {
-        self.children
-            .iter()
-            .map(|child| {
-                let mut frame = child.draw();
-                frame.align_width();
-                frame
-            })
-            .reduce(|mut acc, mut frame| {
-                let max_height = std::cmp::max(acc.height(), frame.height());
-                acc.expand_to_height(max_height);
-                frame.expand_to_height(max_height);
-                for row_index in 0..max_height {
-                    acc[row_index] += &frame[row_index];
-                }
-                acc
-            })
-            .unwrap_or_else(|| vec!["".to_string()])
+    fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
+        let child_width = constraint.x as usize / self.children.len();
+        let mut x_offset = 0;
+        for child in &self.children {
+            let offset = Point {
+                x: x_offset as isize,
+                y: 0,
+            };
+            display_list.0.push(Operation::SetAnchor(offset));
+            child.draw(
+                Size {
+                    x: child_width as isize,
+                    y: constraint.y,
+                },
+                display_list,
+            );
+            display_list.0.push(Operation::SetAnchor(-offset));
+            x_offset += child_width;
+        }
     }
 }
