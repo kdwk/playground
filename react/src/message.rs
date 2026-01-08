@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::VecDeque};
 
 use stdext::prelude::{Anything, any};
 
@@ -23,17 +23,19 @@ impl Default for MessageFlow {
 }
 
 thread_local! {
-    pub(crate) static MESSAGE_QUEUE: RefCell<Vec<Message<'static>>> = RefCell::new(vec![]);
+    pub(crate) static MESSAGE_QUEUE: RefCell<VecDeque<Message<'static>>> = RefCell::new(VecDeque::new());
 }
 
 pub fn send<T: 'static>(message: T) {
-    MESSAGE_QUEUE.with_borrow_mut(|queue| queue.push(any(message)));
+    MESSAGE_QUEUE.with_borrow_mut(|queue| queue.push_back(any(message)));
 }
 
 pub fn handle_messages(mut f: impl FnMut(&Message)) {
+    let mut msgs = vec![];
     MESSAGE_QUEUE.with_borrow_mut(|queue| {
-        while let Some(msg) = queue.pop() {
-            f(&msg);
+        while let Some(msg) = queue.pop_front() {
+            msgs.push(msg);
         }
     });
+    msgs.into_iter().for_each(|msg| f(&msg));
 }

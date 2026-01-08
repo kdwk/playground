@@ -20,12 +20,7 @@ thread_local! {
 }
 
 pub fn uid() -> usize {
-    COUNTER.with(|counter| {
-        counter
-            .borrow_mut()
-            .next()
-            .expect("Ran out of UIDs for Widgets")
-    })
+    COUNTER.with_borrow_mut(|counter| counter.next().expect("Ran out of UIDs for Widgets"))
 }
 
 pub struct Widget<State> {
