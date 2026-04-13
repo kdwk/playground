@@ -12,7 +12,7 @@ fn main() -> Result<()> {
         column([counter(12), text_field("").0]),
         column([
             text_field("").0,
-            scrollable_2d(download("https://www.rust-lang.org")).style(sized(Some(5), None)),
+            scrollable_2d(download("https://www.rust-lang.org")),
             // scrollable_2d(download("url"),
         ]),
     ]))

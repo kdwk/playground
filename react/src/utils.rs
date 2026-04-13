@@ -90,22 +90,113 @@ pub enum Dimension {
     Pixel(isize),
     Flex(isize),
 }
+use Dimension::{Flex, Pixel};
+
+impl Dimension {
+    fn is_pixel(self) -> bool {
+        if let Pixel(_) = self { true } else { false }
+    }
+    fn is_flex(self) -> bool {
+        if let Flex(_) = self { true } else { false }
+    }
+    fn to_pixel(self) -> isize {
+        match self {
+            Pixel(pix) => pix,
+            Flex(_) => 0,
+        }
+    }
+    fn to_flex(self) -> isize {
+        match self {
+            Pixel(_) => 0,
+            Flex(flex) => flex,
+        }
+    }
+    fn add_pixels(self, rhs: Self) -> isize {
+        self.to_pixel() + rhs.to_pixel()
+    }
+    fn add_flex(self, rhs: Self) -> isize {
+        self.to_flex() + rhs.to_flex()
+    }
+}
+
+pub trait OptionDimensionExt {
+    fn add_pixels(self, rhs: Option<Dimension>) -> Option<Dimension>;
+    fn add_flex(self, rhs: Option<Dimension>) -> Option<Dimension>;
+}
+
+impl OptionDimensionExt for Option<Dimension> {
+    fn add_pixels(self, rhs: Option<Dimension>) -> Option<Dimension> {
+        match (self, rhs) {
+            (Some(dim1), Some(dim2)) => Some(Pixel(dim1.add_pixels(dim2))),
+            _ => None,
+        }
+    }
+    fn add_flex(self, rhs: Option<Dimension>) -> Option<Dimension> {
+        match (self, rhs) {
+            (Some(dim1), Some(dim2)) => Some(Flex(dim1.add_flex(dim2))),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ProposedSize {
-    pub x: Option<isize>,
-    pub y: Option<isize>,
+    pub x: Option<Dimension>,
+    pub y: Option<Dimension>,
 }
 
 pub trait Realize {
-    fn realize(self, axis_constraint: Option<Dimension>) -> Option<Dimension>;
+    fn realize(
+        self,
+        axis_constraint: Option<Dimension>,
+    ) -> impl IntoIterator<Item = Option<Dimension>>;
 }
 
-// impl<'a, T: IntoIterator<Item = &'a ProposedSize>> Realize for T {
-//     fn realize(self, axis_constraint: Option<Dimension>) -> Option<Dimension> {
-//         let pixels_sum = self.into_iter().map(|)
-//     }
-// }
+struct PixelFlexSum {
+    pixels: Option<Dimension>,
+    flex: Option<Dimension>,
+}
+
+impl<T: IntoIterator<Item = Option<Dimension>>> Realize for T
+where
+    T::IntoIter: Clone,
+{
+    fn realize(
+        self,
+        axis_constraint: Option<Dimension>,
+    ) -> impl IntoIterator<Item = Option<Dimension>> {
+        let dims = self.into_iter();
+        let PixelFlexSum { pixels, flex } = dims.clone().fold(
+            PixelFlexSum {
+                pixels: Some(Pixel(0)),
+                flex: Some(Flex(0)),
+            },
+            |acc, e| PixelFlexSum {
+                pixels: acc.pixels.add_pixels(e),
+                flex: acc.flex.add_flex(e),
+            },
+        );
+        assert!(pixels.is_none_or(|dim| dim.is_pixel()));
+        assert!(flex.is_none_or(|dim| dim.is_flex()));
+        let pixels_for_flex = if let Some(Pixel(constraint)) = axis_constraint
+            && let Some(Pixel(pixels_sum)) = pixels
+        {
+            Some(constraint - pixels_sum)
+        } else {
+            None
+        };
+        let flex_sum = flex;
+        dims.map(move |dim| match dim {
+            Some(Pixel(pix)) => Some(Pixel(pix)),
+            Some(Flex(flex)) => if let Some(Flex(flex_sum)) = flex_sum && let Some(pixels_for_flex) = pixels_for_flex {
+                Some(Pixel(flex * (pixels_for_flex / flex_sum)))
+            } else {
+                Some(Flex(flex))
+            },
+            None => None
+        })
+    }
+}
 
 impl ProposedSize {
     pub fn min(self, rhs: Self) -> Self {

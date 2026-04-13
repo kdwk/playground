@@ -1,10 +1,9 @@
 use crate::{
     prelude::{Component, Pipe, Pipeline, ProposedSize, SizedElement, Widget},
-    widget::propagate,
 };
 
 pub mod prelude {
-    pub use super::Style;
+    pub use super::{Style, Color};
 }
 
 pub trait Style {
@@ -28,4 +27,11 @@ pub fn sized(x: Option<isize>, y: Option<isize>) -> impl Fn(Component) -> Compon
             },
         )
     }
+}
+
+#[derive(Debug, Clone, Copy, Hash)]
+pub struct Color {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8
 }

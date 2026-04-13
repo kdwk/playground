@@ -10,7 +10,7 @@ pub struct RowElement {
 
 impl Element for RowElement {
     fn propose_size(&self, proposed_constraints: ProposedSize) -> ProposedSize {
-        ProposedSize {
+        dbg!(ProposedSize {
             y: proposed_constraints.y,
             x: self
                 .children
@@ -25,7 +25,7 @@ impl Element for RowElement {
                 })
                 .sum(),
         }
-        .min(proposed_constraints)
+        .min(proposed_constraints))
     }
     fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
         // let child_width = constraint.x as usize / self.children.len();

@@ -70,6 +70,6 @@ impl Element for StringElement {
 
 fn count_lines(s: &str, x_constraint: isize) -> isize {
     s.split("\n")
-        .map(|line| (((line.len() as f64) / (x_constraint as f64)).ceil() as isize).min(1)) // The newline takes up at least one row
+        .map(|line| (((line.len() as f64) / (x_constraint as f64)).ceil() as isize).max(1)) // The newline takes up at least one row
         .sum()
 }
