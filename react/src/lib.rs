@@ -9,6 +9,7 @@ pub mod runtime;
 pub mod utils;
 pub mod widget;
 pub mod widgets;
+pub mod style;
 
 pub mod prelude {
     pub use super::{

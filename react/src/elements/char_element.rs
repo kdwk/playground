@@ -1,4 +1,4 @@
-use crate::prelude::{DisplayList, Element, ProposedSize, Operation, Size};
+use crate::prelude::{DisplayList, Element, ProposedSize, Operation, Size, Pixel};
 
 pub mod prelude {
     pub use super::CharElement;
