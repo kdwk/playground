@@ -1,4 +1,4 @@
-use crate::prelude::{Color, Element, ProposedSize, Size, DisplayList};
+use crate::prelude::{Color, Element, ProposedSize, Size, DisplayList, Constraint2};
 
 pub mod prelude {
 
@@ -10,10 +10,10 @@ pub struct ColorElement {
 }
 
 impl Element for ColorElement {
-    fn propose_size(&self, proposed_constraints: ProposedSize) -> ProposedSize {
+    fn propose_size(&self, proposed_constraints: Constraint2) -> ProposedSize {
         self.child.propose_size(proposed_constraints)
     }
-    fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
+    fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
         
     }
 }

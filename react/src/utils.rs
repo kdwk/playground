@@ -1,17 +1,18 @@
+use core::panic;
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 pub mod prelude {
     pub(crate) use super::Pipe;
     pub use super::{
-        Axis, Dimension, Dimension::Flex, Dimension::Pixel, Direction, Pipeline, Point,
-        ProposedSize, Size, Vec2,
+        Axis, Constraint, Constraint::Flex, Constraint::Pixel, Constraint2, Direction, Pipeline,
+        Point, ProposedSize, Size, Vec2,
     };
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Axis {
-    Horizontal,
-    Vertical,
+    X,
+    Y,
 }
 #[derive(Debug, Clone, Copy, Hash, Default, PartialEq, Eq)]
 pub struct Vec2 {
@@ -85,14 +86,29 @@ impl Neg for Vec2 {
 pub type Point = Vec2;
 pub type Size = Vec2;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Constraint2 {
+    pub x: Option<isize>,
+    pub y: Option<isize>,
+}
+
+impl Constraint2 {
+    pub fn propose_as_pixels(self) -> ProposedSize {
+        ProposedSize {
+            x: self.x.and_then(|x| Some(Pixel(x))),
+            y: self.y.and_then(|y| Some(Pixel(y))),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum Dimension {
+pub enum Constraint {
     Pixel(isize),
     Flex(isize),
 }
-use Dimension::{Flex, Pixel};
+use Constraint::{Flex, Pixel};
 
-impl Dimension {
+impl Constraint {
     fn is_pixel(self) -> bool {
         if let Pixel(_) = self { true } else { false }
     }
@@ -119,86 +135,114 @@ impl Dimension {
     }
 }
 
-pub trait OptionDimensionExt {
-    fn add_pixels(self, rhs: Option<Dimension>) -> Option<Dimension>;
-    fn add_flex(self, rhs: Option<Dimension>) -> Option<Dimension>;
+pub trait OptionConstraintExt {
+    fn add_pixels(self, rhs: Option<Constraint>) -> Option<Constraint>;
+    fn add_flex(self, rhs: Option<Constraint>) -> Option<Constraint>;
+    fn expect_pixel_or_none(self, message: impl std::fmt::Display) -> Option<isize>;
 }
 
-impl OptionDimensionExt for Option<Dimension> {
-    fn add_pixels(self, rhs: Option<Dimension>) -> Option<Dimension> {
+impl OptionConstraintExt for Option<Constraint> {
+    fn add_pixels(self, rhs: Option<Constraint>) -> Option<Constraint> {
         match (self, rhs) {
             (Some(dim1), Some(dim2)) => Some(Pixel(dim1.add_pixels(dim2))),
             _ => None,
         }
     }
-    fn add_flex(self, rhs: Option<Dimension>) -> Option<Dimension> {
+    fn add_flex(self, rhs: Option<Constraint>) -> Option<Constraint> {
         match (self, rhs) {
             (Some(dim1), Some(dim2)) => Some(Flex(dim1.add_flex(dim2))),
             _ => None,
         }
     }
+    fn expect_pixel_or_none(self, message: impl std::fmt::Display) -> Option<isize> {
+        match self {
+            Some(Pixel(pix)) => Some(pix),
+            Some(Flex(_)) => panic!("{message}"),
+            None => None
+        }
+    }
+}
+
+pub(crate) trait IteratorOptionIsizeExt {
+    fn sum_or_none(self) -> Option<isize>;
+}
+
+impl<It: Iterator<Item = Option<isize>>> IteratorOptionIsizeExt for It {
+    fn sum_or_none(self) -> Option<isize> {
+        let mut sum = 0;
+        for opt in self {
+            if let Some(i) = opt {
+                sum += i;
+            } else {
+                return None;
+            }
+        }
+        Some(sum)
+    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct ProposedSize {
-    pub x: Option<Dimension>,
-    pub y: Option<Dimension>,
+    pub x: Option<Constraint>,
+    pub y: Option<Constraint>,
 }
 
 pub trait Realize {
     fn realize(
         self,
-        axis_constraint: Option<Dimension>,
-    ) -> impl IntoIterator<Item = Option<Dimension>>;
+        axis: Axis,
+        axis_constraint: Option<Constraint>,
+    ) -> impl Iterator<Item = Option<Constraint2>>;
 }
 
 struct PixelFlexSum {
-    pixels: Option<Dimension>,
-    flex: Option<Dimension>,
+    pixels: Option<Constraint>,
+    flex: Option<Constraint>,
 }
 
-impl<T: IntoIterator<Item = Option<Dimension>>> Realize for T
+impl<T: IntoIterator<Item = Option<Constraint2>>> Realize for T
 where
     T::IntoIter: Clone,
 {
     fn realize(
         self,
-        axis_constraint: Option<Dimension>,
-    ) -> impl IntoIterator<Item = Option<Dimension>> {
+        axis: Axis,
+        axis_constraint: Option<Constraint>,
+    ) -> impl Iterator<Item = Option<Constraint2>> {
         let dims = self.into_iter();
         let PixelFlexSum { pixels, flex } = dims.clone().fold(
             PixelFlexSum {
                 pixels: Some(Pixel(0)),
                 flex: Some(Flex(0)),
             },
-            |acc, e| PixelFlexSum {
-                pixels: acc.pixels.add_pixels(e),
-                flex: acc.flex.add_flex(e),
+            |acc, e| match axis {
+                Axis::X => PixelFlexSum {
+                pixels: acc.pixels.add_pixels(e.and_then(|e| e.x)),
+                flex: acc.flex.add_flex(e.x),
             },
+            }
         );
         assert!(pixels.is_none_or(|dim| dim.is_pixel()));
         assert!(flex.is_none_or(|dim| dim.is_flex()));
-        let pixels_for_flex = if let Some(Pixel(constraint)) = axis_constraint
-            && let Some(Pixel(pixels_sum)) = pixels
-        {
-            Some(constraint - pixels_sum)
-        } else {
-            None
+        let pixels_for_flex = match (axis_constraint, pixels) {
+            (Some(Pixel(constraint)), Some(Pixel(pixels_sum))) => Some(constraint - pixels_sum),
+            _ => None,
         };
         let flex_sum = flex;
         dims.map(move |dim| match dim {
             Some(Pixel(pix)) => Some(Pixel(pix)),
-            Some(Flex(flex)) => if let Some(Flex(flex_sum)) = flex_sum && let Some(pixels_for_flex) = pixels_for_flex {
-                Some(Pixel(flex * (pixels_for_flex / flex_sum)))
-            } else {
-                Some(Flex(flex))
+            Some(Flex(flex)) => match (flex_sum, pixels_for_flex) {
+                (Some(Flex(flex_sum)), Some(pixels_for_flex)) => {
+                    Some(Pixel(flex * (pixels_for_flex / flex_sum)))
+                }
+                _ => Some(Flex(flex)),
             },
-            None => None
+            None => None,
         })
     }
 }
 
-impl ProposedSize {
+impl Constraint2 {
     pub fn min(self, rhs: Self) -> Self {
         Self {
             x: match (self.x, rhs.x) {
@@ -227,7 +271,7 @@ impl ProposedSize {
     }
 }
 
-impl Add for ProposedSize {
+impl Add for Constraint2 {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
         Self {
@@ -243,13 +287,13 @@ impl Add for ProposedSize {
     }
 }
 
-impl AddAssign for ProposedSize {
+impl AddAssign for Constraint2 {
     fn add_assign(&mut self, rhs: Self) {
         *self = *self + rhs;
     }
 }
 
-impl Sub for ProposedSize {
+impl Sub for Constraint2 {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
         Self {
@@ -265,13 +309,13 @@ impl Sub for ProposedSize {
     }
 }
 
-impl SubAssign for ProposedSize {
+impl SubAssign for Constraint2 {
     fn sub_assign(&mut self, rhs: Self) {
         *self = *self - rhs;
     }
 }
 
-impl Neg for ProposedSize {
+impl Neg for Constraint2 {
     type Output = Self;
     fn neg(self) -> Self::Output {
         Self {

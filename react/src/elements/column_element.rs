@@ -1,4 +1,7 @@
-use crate::prelude::{DisplayList, Element, Operation, Point, ProposedSize, Size};
+use crate::{
+    prelude::{Constraint2, DisplayList, Element, Operation, Point, ProposedSize, Size},
+    utils::{Constraint::Pixel, IteratorOptionIsizeExt, OptionConstraintExt, Realize},
+};
 
 pub mod prelude {
     pub use super::ColumnElement;
@@ -9,46 +12,40 @@ pub struct ColumnElement {
 }
 
 impl Element for ColumnElement {
-    fn propose_size(&self, proposed_constraints: ProposedSize) -> ProposedSize {
-        // let child_heights = self.children.iter().map(|child| {
-        //     child
-        //         .propose_size(ProposedSize {
-        //             x: proposed_constraints.x,
-        //             y: None,
-        //         })
-        //         .y
-        // });
-        
+    fn propose_size(&self, proposed_constraints: Constraint2) -> ProposedSize {
         ProposedSize {
-            x: proposed_constraints.x,
+            x: proposed_constraints.propose_as_pixels().x,
             y: self
                 .children
                 .iter()
                 .map(|child| {
                     child
-                        .propose_size(ProposedSize {
+                        .propose_size(Constraint2 {
                             x: proposed_constraints.x,
                             y: None,
                         })
                         .y
                 })
-                .sum(),
+                .realize(proposed_constraints.propose_as_pixels().y)
+                .map(|constraint| constraint
+                    .expect_pixel_or_none("Unable to realize flex layout. There must be a pixel-constrained parent to any element proposing flex size.")
+                )
+                .sum_or_none()
+                .and_then(|pix| Some(Pixel(pix)))
+            ,
         }
-        .min(proposed_constraints)
     }
-    fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
-        let avg_child_height = (constraint.y as usize / self.children.len()) as isize;
+    fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
+        let avg_child_height = constraint
+            .y
+            .and_then(|y| Some((y as usize / self.children.len()) as isize));
         let mut y_offset = 0;
-        for child in &self.children {
-            let child_proposed_size = child.propose_size(ProposedSize {
-                x: Some(constraint.x),
-                y: None,
-            });
-            let child_size = Size {
-                x: child_proposed_size
-                    .x
-                    .unwrap_or(constraint.x)
-                    .min(constraint.x),
+        let children_heights = self.children.iter().map(|child| child.propose_size(Constraint2 { x: constraint.x, y: None }).y).realize(constraint.propose_as_pixels().y).map(|constraint| constraint
+                    .expect_pixel_or_none("Unable to realize flex layout. There must be a pixel-constrained parent to any element proposing flex size.")
+                );
+        for (child, height) in self.children.iter().zip(children_heights) {
+            let child_size = Constraint2 {
+                x: constraint.x,
                 y: child_proposed_size
                     .y
                     .unwrap_or(avg_child_height)
