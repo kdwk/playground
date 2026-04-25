@@ -1,8 +1,6 @@
-use crate::{
-    prelude::{Constraint2, DisplayList, Element, Operation, Point},
-    utils::{
-        Axis, ConstraintSum, OptionConstraintExt, Realize
-    },
+use crate::prelude::{
+    Axis, Constraint2, ConstraintSum, DisplayList, Element, Operation, OptionConstraintExt, Point,
+    Realize,
 };
 
 pub mod prelude {
@@ -21,15 +19,14 @@ impl Element for ColumnElement {
                 .children
                 .iter()
                 .map(|child| {
-                    child
-                        .propose_size(Constraint2 {
-                            x: proposed_constraints.x,
-                            y: None,
-                        })
+                    child.propose_size(Constraint2 {
+                        x: proposed_constraints.x,
+                        y: None,
+                    })
                 })
                 .realize(Axis::Y, proposed_constraints.y)
-                .sum_constraint_in_axis(Axis::Y).pixels
-            ,
+                .sum_constraint_in_axis(Axis::Y)
+                .pixels,
         }
     }
     fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
@@ -38,18 +35,16 @@ impl Element for ColumnElement {
             .children
             .iter()
             .map(|child| {
-                child
-                    .propose_size(Constraint2 {
-                        x: constraint.x,
-                        y: None,
-                    })
+                child.propose_size(Constraint2 {
+                    x: constraint.x,
+                    y: None,
+                })
             })
             .realize(Axis::Y, constraint.y);
         for (child, child_constraint) in self.children.iter().zip(children_constraints) {
             let child_size = Constraint2 {
                 x: constraint.x,
-                y: child_constraint
-                    .y,
+                y: child_constraint.y,
             };
             let offset = Point {
                 x: 0,

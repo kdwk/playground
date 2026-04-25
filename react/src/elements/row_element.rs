@@ -41,18 +41,15 @@ impl Element for RowElement {
             })
             .realize(Axis::X, constraint.x);
         for (child, child_constraint) in self.children.iter().zip(children_constraints) {
-            eprintln!("child_constraint: {child_constraint:?}");
             let child_size = Constraint2 {
                 x: child_constraint
                     .x,
                 y: constraint.y,
             };
-            eprintln!("child_size: {child_size:?}");
             let offset = Point {
                 x: x_offset as isize,
                 y: 0,
             };
-            eprintln!("offset: {offset:?}");
             display_list.0.push(Operation::SetAnchor(offset));
             child.draw(child_size, display_list);
             display_list.0.push(Operation::SetAnchor(-offset));

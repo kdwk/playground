@@ -268,13 +268,13 @@ impl<T: IntoIterator<Item = Constraint2>> ConstraintSum for T {
                 flex: Some(Flex(0)),
             },
             |acc, e| PixelFlexSum {
-                pixels: acc.pixels.add_pixels_or_none(
+                pixels: acc.pixels.add_pixels(
                         match axis {
                             Axis::X => e.x,
                             Axis::Y => e.y,
                         }
                 ),
-                flex: acc.flex.add_flex_or_none(
+                flex: acc.flex.add_flex(
                         match axis {
                             Axis::X => e.x,
                             Axis::Y => e.y,
@@ -298,21 +298,19 @@ where
         let PixelFlexSum { pixels, flex } = dims.clone().sum_constraint_in_axis(axis);
         assert!(pixels.is_none_or(Constraint::is_pixel));
         assert!(flex.is_none_or(Constraint::is_flex));
-        eprintln!("axis_constraint: {axis_constraint:?}, pixels: {pixels:?}");
         let pixels_for_flex = match axis_constraint {
             Some(Pixel(constraint)) => Some(constraint - pixels.to_pixel()),
             _ => None,
         };
         let flex_sum = flex;
-        eprintln!("flex_sum: {flex_sum:?}, pixels_for_flex: {pixels_for_flex:?}");
         let realized_constraint = move |dim| match dim {
             Some(Pixel(pix)) => Some(Pixel(pix)),
-            Some(Flex(flex)) => {eprintln!("Realizing child with {flex}:"); match (flex_sum, pixels_for_flex) {
+            Some(Flex(flex)) => match (flex_sum, pixels_for_flex) {
                 (Some(Flex(flex_sum)), Some(pixels_for_flex)) => {
                     dbg!(Some(Pixel(flex * (pixels_for_flex / flex_sum))))
                 }
                 _ => dbg!(Some(Flex(flex))),
-            }},
+            },
             None => None,
         };
         dims.map(move |dim| match axis {
@@ -334,86 +332,6 @@ impl Constraint2 {
             f(self)
         }
     }
-//     pub fn min(self, rhs: Self) -> Self {
-//         Self {
-//             x: match (self.x, rhs.x) {
-//                 (Some(x1), Some(x2)) => Some(x1.min(x2)),
-//                 (x1, None) => x1,
-//                 (None, x2) => x2,
-//             },
-//             y: match (self.y, rhs.y) {
-//                 (Some(y1), Some(y2)) => Some(y1.min(y2)),
-//                 (y1, None) => y1,
-//                 (None, y2) => y2,
-//             },
-//         }
-//     }
-//     pub fn max(self, rhs: Self) -> Self {
-//         Self {
-//             x: match (self.x, rhs.x) {
-//                 (Some(x1), Some(x2)) => Some(x1.max(x2)),
-//                 _ => None,
-//             },
-//             y: match (self.y, rhs.y) {
-//                 (Some(y1), Some(y2)) => Some(y1.max(y2)),
-//                 _ => None,
-//             },
-//         }
-//     }
-// }
-
-// impl Add for Constraint2 {
-//     type Output = Self;
-//     fn add(self, rhs: Self) -> Self::Output {
-//         Self {
-//             x: match (self.x, rhs.x) {
-//                 (Some(x1), Some(x2)) => Some(x1 + x2),
-//                 _ => None,
-//             },
-//             y: match (self.y, rhs.y) {
-//                 (Some(y1), Some(y2)) => Some(y1 + y2),
-//                 _ => None,
-//             },
-//         }
-//     }
-// }
-
-// impl AddAssign for Constraint2 {
-//     fn add_assign(&mut self, rhs: Self) {
-//         *self = *self + rhs;
-//     }
-// }
-
-// impl Sub for Constraint2 {
-//     type Output = Self;
-//     fn sub(self, rhs: Self) -> Self::Output {
-//         Self {
-//             x: match (self.x, rhs.x) {
-//                 (Some(x1), Some(x2)) => Some(x1 - x2),
-//                 _ => None,
-//             },
-//             y: match (self.y, rhs.y) {
-//                 (Some(y1), Some(y2)) => Some(y1 - y2),
-//                 _ => None,
-//             },
-//         }
-//     }
-// }
-
-// impl SubAssign for Constraint2 {
-//     fn sub_assign(&mut self, rhs: Self) {
-//         *self = *self - rhs;
-//     }
-// }
-
-// impl Neg for Constraint2 {
-//     type Output = Self;
-//     fn neg(self) -> Self::Output {
-//         Self {
-//             x: if let Some(x) = self.x { Some(-x) } else { None },
-//             y: if let Some(y) = self.y { Some(-y) } else { None },
-//         }
-//     }
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]

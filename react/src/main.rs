@@ -1,24 +1,17 @@
 use std::io::Result;
 
 use crossterm::event::{KeyCode, KeyEvent};
-use react::{
-    prelude::*,
-    style::{Style},
-};
+use react::{prelude::*, style::Style};
 use stdext::prelude::*;
 
 fn main() -> Result<()> {
-    render(
-        row([text("One").style(width(Flex(1))), text("two")])
+    render(adjustable_row(
+        adjustable_column(counter(12), text_field("").0),
+        adjustable_column(
+            text_field("").0,
+            download("https://www.rust-lang.org")),
+        ),
     )
-    // render(row([
-    //     column([counter(12), text_field("").0]),
-    //     column([
-    //         text_field("").0,
-    //         scrollable_2d(download("https://www.rust-lang.org")),
-    //         // scrollable_2d(download("url"),
-    //     ]),
-    // ]))
     // render(todo_list())
     // render(column([
     //     scrollable(Axis::Vertical, column([counter(0), counter(1), counter(2)])),

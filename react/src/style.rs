@@ -16,7 +16,7 @@ impl Style for Component {
     }
 }
 
-pub fn sized(x: Option<Constraint>, y: Option<Constraint>) -> impl Fn(Component) -> Component {
+pub fn sized(x: Option<Constraint>, y: Option<Constraint>) -> impl Fn(Component) -> Component + Clone {
     move |child| {
         Widget::elemental(
             child,
@@ -29,11 +29,11 @@ pub fn sized(x: Option<Constraint>, y: Option<Constraint>) -> impl Fn(Component)
     }
 }
 
-pub fn width(x: Constraint) -> impl Fn(Component) -> Component {
+pub fn width(x: Constraint) -> impl Fn(Component) -> Component + Clone {
     sized(Some(x), None)
 }
 
-pub fn height(y: Constraint) -> impl Fn(Component) -> Component {
+pub fn height(y: Constraint) -> impl Fn(Component) -> Component + Clone {
     sized(None, Some(y))
 }
 
