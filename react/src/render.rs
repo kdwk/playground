@@ -2,7 +2,7 @@ use crate::{
     component::prelude::*,
     frame::{Token, TokensExt},
     message::{handle_messages, send},
-    prelude::{DisplayList, Element, Frame, FrameExt, Size, Constraint2},
+    prelude::{DisplayList, Element, Frame, FrameExt, Pixel, Constraint2},
 };
 use std::{
     io::{self, Write},
@@ -56,8 +56,8 @@ fn setup() -> (
             let mut display_list = DisplayList::default();
             element.draw(
                 Constraint2 {
-                    x: Some(cols as isize),
-                    y: Some(rows as isize),
+                    x: Some(Pixel(cols as isize)),
+                    y: Some(Pixel(rows as isize)),
                 },
                 &mut display_list,
             );

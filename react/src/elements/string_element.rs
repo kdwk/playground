@@ -1,4 +1,6 @@
-use crate::prelude::{DisplayList, Element, Operation, Point, ProposedSize, Size};
+use std::isize;
+
+use crate::{prelude::{Constraint2, DisplayList, Element, Operation, Pixel, Point}, utils::OptionConstraintExt};
 
 pub mod prelude {
     pub use super::StringElement;
@@ -10,25 +12,21 @@ pub struct StringElement {
 }
 
 impl Element for StringElement {
-    fn propose_size(&self, proposed_constraints: ProposedSize) -> ProposedSize {
+    fn propose_size(&self, proposed_constraints: Constraint2) -> Constraint2 {
         match (proposed_constraints.x, proposed_constraints.y) {
-            (Some(_), Some(_)) => proposed_constraints,
-            (Some(x_constraint), None) => ProposedSize {
+            (Some(x_constraint), None) => Constraint2 {
                 x: Some(x_constraint),
-                y: if x_constraint != 0 {
-                    Some(count_lines(&self.s, x_constraint))
+                y: if let Pixel(x_constraint_pix) = x_constraint && x_constraint_pix != 0 {
+                    Some(Pixel(count_lines(&self.s, x_constraint_pix)))
                 } else {
                     None
                 },
             },
-            (None, Some(y_constraint)) => ProposedSize {
-                x: None, // If parent has no x_constraint it makes more sense to let parent determine x than to write everything on a single line
-                y: Some(y_constraint),
-            },
-            _ => proposed_constraints,
+            _ => proposed_constraints, // If parent has no x_constraint it makes more sense to let parent determine x than to write everything on a single line
         }
     }
-    fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
+    fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
+        let (constraint_x, constraint_y) = (constraint.x.unwrap_pixel_or(isize::MAX), constraint.y.unwrap_pixel_or(isize::MAX));
         let mut offset = Point::default();
         for (i, c) in self.s.chars().enumerate() {
             if c != '\n' {
@@ -50,10 +48,10 @@ impl Element for StringElement {
             } else {
                 offset.x += 1;
             }
-            if offset.x >= constraint.x {
+            if offset.x >= constraint_x {
                 offset.y += 1;
                 offset.x = 0;
-                if offset.y >= constraint.y {
+                if offset.y >= constraint_y {
                     display_list.0.push(Operation::PutChar('…'));
                     break;
                 }

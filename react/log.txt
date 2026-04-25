@@ -1,9 +1,9 @@
 warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
-package:   /Users/kdwk/Projects/personal/playground/react/Cargo.toml
-workspace: /Users/kdwk/Projects/personal/playground/Cargo.toml
+package:   /workspaces/playground/react/Cargo.toml
+workspace: /workspaces/playground/Cargo.toml
 warning: profiles for the non root package will be ignored, specify profiles at the workspace root:
-package:   /Users/kdwk/Projects/personal/playground/editor/Cargo.toml
-workspace: /Users/kdwk/Projects/personal/playground/Cargo.toml
+package:   /workspaces/playground/editor/Cargo.toml
+workspace: /workspaces/playground/Cargo.toml
 warning: unused imports: `Display` and `format`
  --> stdext/src/linked_list.rs:7:23
   |
@@ -159,13 +159,13 @@ help: use `'_` for type paths
    |                                       +++
 
 warning: `stdext` (lib) generated 21 warnings (run `cargo fix --lib -p stdext` to apply 14 suggestions)
-warning: unused import: `Pixel`
- --> react/src/elements/char_element.rs:1:75
-  |
-1 | use crate::prelude::{DisplayList, Element, ProposedSize, Operation, Size, Pixel};
-  |                                                                           ^^^^^
-  |
-  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+warning: unused import: `color_element::prelude::*`
+  --> react/src/elements/mod.rs:13:115
+   |
+13 |         scrollable_element::prelude::*, string_element::prelude::*, utils::prelude::*, sized_element::prelude::*, color_element::prelude::*
+   |                                                                                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused import: `counter`
  --> react/src/widgets/delayed.rs:6:48
@@ -173,11 +173,27 @@ warning: unused import: `counter`
 6 |     prelude::{Component, Task, Widget, column, counter, text, timer},
   |                                                ^^^^^^^
 
-warning: unused import: `widget::propagate`
- --> react/src/style.rs:3:5
-  |
-3 |     widget::propagate,
-  |     ^^^^^^^^^^^^^^^^^
+warning: unused variable: `constraint`
+  --> react/src/elements/color_element.rs:16:20
+   |
+16 |     fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
+   |                    ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_constraint`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `display_list`
+  --> react/src/elements/color_element.rs:16:45
+   |
+16 |     fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
+   |                                             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_display_list`
+
+warning: trait `IteratorOptionIsizeExt` is never used
+   --> react/src/utils.rs:227:18
+    |
+227 | pub(crate) trait IteratorOptionIsizeExt {
+    |                  ^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: method `remove_word_left` is never used
   --> react/src/widgets/text_field.rs:41:8
@@ -187,31 +203,42 @@ warning: method `remove_word_left` is never used
 ...
 41 |     fn remove_word_left(&mut self) {
    |        ^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
-warning: `react` (lib) generated 4 warnings (run `cargo fix --lib -p react` to apply 3 suggestions)
-   Compiling react v0.1.0 (/Users/kdwk/Projects/personal/playground/react)
+warning: `react` (lib) generated 6 warnings (run `cargo fix --lib -p react` to apply 4 suggestions)
 warning: struct `AddTask` is never constructed
-  --> react/src/main.rs:26:8
+  --> react/src/main.rs:29:8
    |
-26 | struct AddTask(String);
+29 | struct AddTask(String);
    |        ^^^^^^^
    |
    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: function `todo_list` is never used
-  --> react/src/main.rs:28:4
+  --> react/src/main.rs:31:4
    |
-28 | fn todo_list() -> Component {
+31 | fn todo_list() -> Component {
    |    ^^^^^^^^^
 
 warning: function `add_task` is never used
-  --> react/src/main.rs:51:4
+  --> react/src/main.rs:54:4
    |
-51 | fn add_task() -> Component {
+54 | fn add_task() -> Component {
    |    ^^^^^^^^
 
 warning: `react` (bin "react") generated 3 warnings
-    Finished `release` profile [optimized + debuginfo] target(s) in 0.81s
-     Running `/Users/kdwk/Projects/personal/playground/target/release/react`
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.08s
+     Running `/workspaces/playground/target/release/react`
+axis_constraint: Some(Pixel(185)), pixels: None
+flex_sum: None, pixels_for_flex: Some(185)
+Realizing child with 1:
+[react/src/utils.rs:314:22] Some(Flex(flex)) = Some(
+    Flex(
+        1,
+    ),
+)
+child_constraint: Constraint2 { x: Some(Flex(1)), y: Some(Pixel(26)) }
+child_size: Constraint2 { x: Some(Flex(1)), y: Some(Pixel(26)) }
+offset: Vec2 { x: 0, y: 0 }
+child_constraint: Constraint2 { x: None, y: Some(Pixel(26)) }
+child_size: Constraint2 { x: None, y: Some(Pixel(26)) }
+offset: Vec2 { x: 0, y: 0 }

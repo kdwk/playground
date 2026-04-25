@@ -1,4 +1,4 @@
-use crate::prelude::{DisplayList, Element, Operation, Point, ProposedSize, Size};
+use crate::prelude::{DisplayList, Element, Operation, Point, Constraint2, Axis, Realize, ConstraintSum, OptionConstraintExt};
 
 pub mod prelude {
     pub use super::RowElement;
@@ -9,68 +9,54 @@ pub struct RowElement {
 }
 
 impl Element for RowElement {
-    fn propose_size(&self, proposed_constraints: ProposedSize) -> ProposedSize {
-        dbg!(ProposedSize {
-            y: proposed_constraints.y,
+    fn propose_size(&self, proposed_constraints: Constraint2) -> Constraint2 {
+        Constraint2 {
             x: self
                 .children
                 .iter()
                 .map(|child| {
                     child
-                        .propose_size(ProposedSize {
+                        .propose_size(Constraint2 {
                             x: None,
                             y: proposed_constraints.y,
                         })
-                        .x
                 })
-                .sum(),
+                .realize(Axis::X, proposed_constraints.x)
+                .sum_constraint_in_axis(Axis::X).pixels
+            ,
+            y: proposed_constraints.y,
         }
-        .min(proposed_constraints))
     }
-    fn draw(&self, constraint: Size, display_list: &mut DisplayList) {
-        // let child_width = constraint.x as usize / self.children.len();
-        // let mut x_offset = 0;
-        // for child in &self.children {
-        //     let offset = Point {
-        //         x: x_offset as isize,
-        //         y: 0,
-        //     };
-        //     display_list.0.push(Operation::SetAnchor(offset));
-        //     child.draw(
-        //         Size {
-        //             x: child_width as isize,
-        //             y: constraint.y,
-        //         },
-        //         display_list,
-        //     );
-        //     display_list.0.push(Operation::SetAnchor(-offset));
-        //     x_offset += child_width;
-        // }
-        let avg_child_width = (constraint.x as usize / self.children.len()) as isize;
+    fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
         let mut x_offset = 0;
-        for child in &self.children {
-            let child_proposed_size = child.propose_size(ProposedSize {
-                y: Some(constraint.y),
-                x: None,
-            });
-            let child_size = Size {
-                x: child_proposed_size
-                    .x
-                    .unwrap_or(avg_child_width)
-                    .min((constraint.x - x_offset).max(0)),
-                y: child_proposed_size
-                    .y
-                    .unwrap_or(constraint.y)
-                    .min(constraint.y),
+        let children_constraints = self
+            .children
+            .iter()
+            .map(|child| {
+                child
+                    .propose_size(Constraint2 {
+                        x: None,
+                        y: constraint.y,
+                    })
+            })
+            .realize(Axis::X, constraint.x);
+        for (child, child_constraint) in self.children.iter().zip(children_constraints) {
+            eprintln!("child_constraint: {child_constraint:?}");
+            let child_size = Constraint2 {
+                x: child_constraint
+                    .x,
+                y: constraint.y,
             };
+            eprintln!("child_size: {child_size:?}");
             let offset = Point {
                 x: x_offset as isize,
                 y: 0,
             };
+            eprintln!("offset: {offset:?}");
             display_list.0.push(Operation::SetAnchor(offset));
             child.draw(child_size, display_list);
             display_list.0.push(Operation::SetAnchor(-offset));
-            x_offset += child_size.x;
+            x_offset += child_size.x.to_pixel();
         }
     }
 }

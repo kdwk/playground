@@ -1,6 +1,8 @@
 use crate::{
-    prelude::{Constraint2, DisplayList, Element, Operation, Point, ProposedSize, Size},
-    utils::{Constraint::Pixel, IteratorOptionIsizeExt, OptionConstraintExt, Realize},
+    prelude::{Constraint2, DisplayList, Element, Operation, Point},
+    utils::{
+        Axis, ConstraintSum, OptionConstraintExt, Realize
+    },
 };
 
 pub mod prelude {
@@ -12,9 +14,9 @@ pub struct ColumnElement {
 }
 
 impl Element for ColumnElement {
-    fn propose_size(&self, proposed_constraints: Constraint2) -> ProposedSize {
-        ProposedSize {
-            x: proposed_constraints.propose_as_pixels().x,
+    fn propose_size(&self, proposed_constraints: Constraint2) -> Constraint2 {
+        Constraint2 {
+            x: proposed_constraints.x,
             y: self
                 .children
                 .iter()
@@ -24,32 +26,30 @@ impl Element for ColumnElement {
                             x: proposed_constraints.x,
                             y: None,
                         })
-                        .y
                 })
-                .realize(proposed_constraints.propose_as_pixels().y)
-                .map(|constraint| constraint
-                    .expect_pixel_or_none("Unable to realize flex layout. There must be a pixel-constrained parent to any element proposing flex size.")
-                )
-                .sum_or_none()
-                .and_then(|pix| Some(Pixel(pix)))
+                .realize(Axis::Y, proposed_constraints.y)
+                .sum_constraint_in_axis(Axis::Y).pixels
             ,
         }
     }
     fn draw(&self, constraint: Constraint2, display_list: &mut DisplayList) {
-        let avg_child_height = constraint
-            .y
-            .and_then(|y| Some((y as usize / self.children.len()) as isize));
         let mut y_offset = 0;
-        let children_heights = self.children.iter().map(|child| child.propose_size(Constraint2 { x: constraint.x, y: None }).y).realize(constraint.propose_as_pixels().y).map(|constraint| constraint
-                    .expect_pixel_or_none("Unable to realize flex layout. There must be a pixel-constrained parent to any element proposing flex size.")
-                );
-        for (child, height) in self.children.iter().zip(children_heights) {
+        let children_constraints = self
+            .children
+            .iter()
+            .map(|child| {
+                child
+                    .propose_size(Constraint2 {
+                        x: constraint.x,
+                        y: None,
+                    })
+            })
+            .realize(Axis::Y, constraint.y);
+        for (child, child_constraint) in self.children.iter().zip(children_constraints) {
             let child_size = Constraint2 {
                 x: constraint.x,
-                y: child_proposed_size
-                    .y
-                    .unwrap_or(avg_child_height)
-                    .min((constraint.y - y_offset).max(0)),
+                y: child_constraint
+                    .y,
             };
             let offset = Point {
                 x: 0,
@@ -58,7 +58,7 @@ impl Element for ColumnElement {
             display_list.0.push(Operation::SetAnchor(offset));
             child.draw(child_size, display_list);
             display_list.0.push(Operation::SetAnchor(-offset));
-            y_offset += child_size.y;
+            y_offset += child_size.y.to_pixel();
         }
     }
 }
