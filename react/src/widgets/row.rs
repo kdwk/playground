@@ -1,19 +1,21 @@
-use crate::{component::prelude::*, prelude::RowElement, widget::prelude::*};
+use crate::{component::prelude::*, prelude::{RowElement, MessageFlow::Propagate}, widget::prelude::*};
 
 pub fn row(children: impl IntoIterator<Item = Component>) -> Component {
-    let widgets = children.into_iter().collect::<Vec<_>>();
-    Widget::elemental(widgets, propagate, move |this| {
-        let (did_rebuild, children): (Vec<_>, Vec<_>) = this
-            .state
-            .iter()
-            .map(|child| child.borrow_mut().create_element())
-            .unzip();
-        let did_any_child_rebuild = did_rebuild.into_iter().fold(false, |acc, e| acc || e);
-        (
-            did_any_child_rebuild,
-            Box::new(RowElement {
-                children,
-            }),
-        )
-    })
+    let children_vec = children.into_iter().collect::<Vec<_>>();
+    
+    Widget::stateful_container(
+        (),
+        |_, _| Propagate,
+        move |_| children_vec.clone(),
+        |_, child_elements| {
+            // Create RowElement from child elements
+            // The rebuild flag is already handled by create_children
+            (
+                false, // custom_did_rebuild - RowElement creation doesn't need rebuild
+                Box::new(RowElement {
+                    children: child_elements,
+                }),
+            )
+        },
+    )
 }

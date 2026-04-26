@@ -1,19 +1,20 @@
-use crate::{component::prelude::*, elements::column_element::ColumnElement, widget::prelude::*};
+use crate::{component::prelude::*, elements::column_element::ColumnElement, prelude::MessageFlow::Propagate, widget::prelude::*};
 
 pub fn column(children: impl IntoIterator<Item = Component>) -> Component {
-    let widgets = children.into_iter().collect::<Vec<_>>();
-    Widget::elemental(widgets, propagate, |this| {
-        let (did_rebuild, children): (Vec<_>, Vec<_>) = this
-            .state
-            .iter()
-            .map(|child| child.borrow_mut().create_element())
-            .unzip();
-        let did_any_child_rebuild = did_rebuild.into_iter().fold(false, |acc, e| acc || e);
-        (
-            did_any_child_rebuild,
-            Box::new(ColumnElement {
-                children,
-            }),
-        )
-    })
+    let children_vec = children.into_iter().collect::<Vec<_>>();
+    
+    Widget::stateful_container(
+        (),
+        |_, _| Propagate,
+        move |_| children_vec.clone(),
+        |_, child_elements| {
+            // Create ColumnElement from child elements
+            (
+                false,
+                Box::new(ColumnElement {
+                    children: child_elements,
+                }),
+            )
+        },
+    )
 }

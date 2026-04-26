@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt::Debug, ops::RangeFrom, rc::Rc};
+use std::{cell::RefCell, fmt::Debug, ops::RangeFrom, rc::{Rc, Weak}};
 
 use stdext::prelude::switch;
 use tokio::sync::mpsc::{UnboundedSender, unbounded_channel};
@@ -9,10 +9,23 @@ use crate::{
     prelude::Element,
     render::Tick,
     runtime::{Stream, Task, go},
+    // tree,
 };
 
 pub mod prelude {
     pub use super::{Widget, propagate};
+}
+
+#[derive(Debug)]
+pub enum FocusState {
+    NotFocused,
+    ChildFocused { index: usize },
+    SelfFocused,
+}
+
+#[derive(Debug)]
+pub struct MessageToFocused {
+    pub internal: Message<'static>,
 }
 
 thread_local! {
@@ -26,20 +39,22 @@ pub fn uid() -> usize {
 pub struct Widget<State> {
     id: usize,
     pub state: State,
-    prev: Option<Component>,
+    pub children: Vec<Component>,
     needs_rebuild: bool,
-    builder: Box<dyn Fn(&State) -> Component>,
+    builder: Box<dyn Fn(&State) -> Vec<Component>>,
     on_message: Rc<dyn Fn(&mut Self, &Message)>,
     create_element: Rc<dyn Fn(&mut Self) -> (bool, Box<dyn Element>)>,
+    pub focused_child_index: FocusState,
+    is_focusable: bool,
 }
 
 impl<State> Debug for Widget<State> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Contains prev: {}; Child: {:?}",
-            self.prev.is_some(),
-            self.prev
+            "Widget(id: {}, children_len: {})",
+            self.id,
+            self.children.len()
         )
     }
 }
@@ -53,48 +68,128 @@ where
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&State) -> Component + 'static,
     ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
         Rc::new(RefCell::new(Widget {
-            id: uid(),
+            id,
             state: state,
-            prev: None,
+            children: Vec::new(),
             needs_rebuild: true,
-            builder: Box::new(builder),
-            on_message: Rc::new(move |this, msg| {
-                if let Propagate = on_message(this, msg)
-                    && let Some(prev) = &this.prev
-                {
-                    prev.borrow_mut().on_message(msg);
+            builder: Box::new(move |state| vec![builder(state)]),
+            on_message: Rc::new(handle_message_to_focused(move |this, msg| {
+                if let Propagate = on_message(this, msg) {
+                    for child in &this.children {
+                        child.borrow_mut().on_message(msg);
+                    }
                 }
-            }),
-            create_element: Rc::new(create_child),
+            })),
+            create_element: Rc::new(create_child_always_replace),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: false,
         }))
     }
+
+    pub fn focusable_stateful(
+        state: State,
+        on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
+        builder: impl Fn(&State) -> Component + 'static,
+    ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
+        Rc::new(RefCell::new(Widget {
+            id,
+            state: state,
+            children: Vec::new(),
+            needs_rebuild: true,
+            builder: Box::new(move |state| vec![builder(state)]),
+            on_message: Rc::new(handle_message_to_focused(move |this, msg| {
+                if let Propagate = on_message(this, msg) {
+                    for child in &this.children {
+                        child.borrow_mut().on_message(msg);
+                    }
+                }
+            })),
+            create_element: Rc::new(create_child_always_replace),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: true,
+        }))
+    }
+    
+    pub fn stateful_container(
+        state: State,
+        on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
+        builder: impl Fn(&State) -> Vec<Component> + 'static,
+        create_element: impl Fn(&mut Self, Vec<Box<dyn Element>>) -> (bool, Box<dyn Element>) + 'static,
+    ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
+        Rc::new(RefCell::new(Widget {
+            id,
+            state: state,
+            children: Vec::new(),
+            needs_rebuild: true,
+            builder: Box::new(builder),
+            on_message: Rc::new(handle_message_to_focused(move |this, msg| {
+                if let Propagate = on_message(this, msg) {
+                    for child in &this.children {
+                        child.borrow_mut().on_message(msg);
+                    }
+                }
+            })),
+            create_element: Rc::new(create_children(create_element)),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: false,
+        }))
+    }
+    
     pub fn elemental(
         state: State,
         on_message: impl Fn(&mut Self, &Message) + 'static,
         create_element: impl Fn(&mut Self) -> (bool, Box<dyn Element>) + 'static,
     ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
         Rc::new(RefCell::new(Widget {
-            id: uid(),
+            id,
             state: state,
-            prev: None,
+            children: Vec::new(),
             needs_rebuild: true,
-            builder: Box::new(|_| panic!()),
-            on_message: Rc::new(on_message),
+            builder: Box::new(|_| Vec::new()),
+            on_message: Rc::new(handle_message_to_focused(on_message)),
             create_element: Rc::new(create_element),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: false,
         }))
     }
-    fn _build(&mut self) -> (bool, Component) {
-        if !self.get_needs_rebuild()
-            && let Some(prev) = &self.prev
-        {
-            (false, prev.clone())
-        } else {
-            let new_widget = (self.builder)(&self.state);
-            self.prev = Some(new_widget.clone());
-            self.mark_did_rebuild();
-            (true, new_widget)
-        }
+    
+    pub fn focusable_elemental(
+        state: State,
+        on_message: impl Fn(&mut Self, &Message) + 'static,
+        create_element: impl Fn(&mut Self) -> (bool, Box<dyn Element>) + 'static,
+    ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
+        Rc::new(RefCell::new(Widget {
+            id,
+            state: state,
+            children: Vec::new(),
+            needs_rebuild: true,
+            builder: Box::new(|_| Vec::new()),
+            on_message: Rc::new(handle_message_to_focused(on_message)),
+            create_element: Rc::new(create_element),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: true,
+        }))
     }
     pub fn get_needs_rebuild(&self) -> bool {
         self.needs_rebuild
@@ -105,6 +200,17 @@ where
     pub fn mark_did_rebuild(&mut self) {
         self.needs_rebuild = false;
     }
+    fn _build(&mut self) -> (bool, Vec<Component>) {
+        if !self.needs_rebuild && !self.children.is_empty() {
+            // Return cached children if no rebuild needed
+            (false, self.children.clone())
+        } else {
+            let new_children = (self.builder)(&self.state);
+            self.needs_rebuild = false;
+            (true, new_children)
+        }
+    }
+    
     #[inline]
     pub fn set_state(&mut self, f: impl FnOnce(&mut State)) {
         f(&mut self.state);
@@ -118,34 +224,33 @@ impl<T: 'static + Send + Sync> Widget<Task<T>> {
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&Task<T>) -> Component + 'static,
     ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
         Rc::new(RefCell::new(Widget {
-            id: uid(),
+            id,
             state: Task::Running(go(task)),
-            prev: None,
+            children: Vec::new(),
             needs_rebuild: true,
-            builder: Box::new(builder),
-            on_message: Rc::new(move |this, msg| {
+            builder: Box::new(move |state| vec![builder(state)]),
+            on_message: Rc::new(handle_message_to_focused(move |this: &mut Self, msg| {
                 switch(msg).case(|&Tick(_)| {
                     if this.state.check() {
                         this.set_state(|_| {});
                     }
                 });
-                if let Propagate = on_message(this, msg)
-                    && let Some(prev) = &this.prev
-                {
-                    prev.borrow_mut().on_message(msg);
+                if let Propagate = on_message(this, msg) {
+                    for child in &this.children {
+                        child.borrow_mut().on_message(msg);
+                    }
                 }
-            }),
-            create_element: Rc::new(create_child),
+            })),
+            create_element: Rc::new(create_child_always_replace),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: false,
         }))
     }
-}
-
-// A standard
-fn create_child<T: 'static>(this: &mut Widget<T>) -> (bool, Box<dyn Element>) {
-    let (did_rebuild, widget) = this._build();
-    let (did_child_rebuild, child_element) = widget.borrow_mut().create_element();
-    (did_rebuild || did_child_rebuild, child_element)
 }
 
 impl<T: 'static + Send + Sync, TaskRet: Send + Sync + 'static> Widget<Stream<T, TaskRet>> {
@@ -154,32 +259,124 @@ impl<T: 'static + Send + Sync, TaskRet: Send + Sync + 'static> Widget<Stream<T, 
         on_message: impl Fn(&mut Self, &Message) -> MessageFlow + 'static,
         builder: impl Fn(&Stream<T, TaskRet>) -> Component + 'static,
     ) -> Component {
+        let id = uid();
+        // Register widget in tree (no parent yet, will be set when added as child)
+        // tree::register(id, None);
+        
         let (sender, receiver) = unbounded_channel();
         Rc::new(RefCell::new(Widget {
+            id,
             state: Stream {
                 task: Task::Running(go(generator(sender))),
                 receiver,
                 current: None,
             },
-            prev: None,
+            children: Vec::new(),
             needs_rebuild: true,
-            builder: Box::new(builder),
-            id: uid(),
-            on_message: Rc::new(move |this, msg| {
+            builder: Box::new(move |state| vec![builder(state)]),
+            on_message: Rc::new(handle_message_to_focused(move |this: &mut Self, msg| {
                 switch(msg).case(|&Tick(_)| {
                     if this.state.check() {
                         this.set_state(|_| {});
                     }
                 });
-                if let Propagate = on_message(this, msg)
-                    && let Some(prev) = &this.prev
-                {
-                    prev.borrow_mut().on_message(msg);
+                if let Propagate = on_message(this, msg) {
+                    for child in &this.children {
+                        child.borrow_mut().on_message(msg);
+                    }
                 }
-            }),
-            create_element: Rc::new(create_child),
+            })),
+            create_element: Rc::new(create_child_always_replace),
+            focused_child_index: FocusState::NotFocused,
+            is_focusable: false,
         }))
     }
+}
+
+/// Reconciliation algorithm for widget children using Vec
+fn reconcile_children_vec_in_place(
+    old_children: &mut Vec<Component>,
+    new_children: Vec<Component>,
+) -> bool {
+    let mut did_rebuild = false;
+    if old_children.len() < new_children.len() {
+        did_rebuild = true;
+        for i in old_children.len()..new_children.len() {
+            old_children.push(new_children[i].clone());
+        }
+        //*old_children = new_children.clone();
+    } else if old_children.len() > new_children.len() {
+        did_rebuild = true;
+        old_children.truncate(new_children.len());
+        //*old_children = new_children.clone();
+    } 
+    did_rebuild
+}
+
+use crate::elements::box_wrapping_element::BoxWrappingElement;
+
+fn create_child_always_replace<T: 'static>(this: &mut Widget<T>) -> (bool, Box<dyn Element>) {
+    let (did_build, new_children) = this._build();
+    let mut final_did_rebuild = did_build;
+    this.children = new_children;
+    
+    // TODO: move styling logic out so user can customize it
+    let element = match this.children.first() {
+        Some(child) => {
+            let (child_did_rebuild, child_element) = child.borrow_mut().create_element();
+            final_did_rebuild = final_did_rebuild || child_did_rebuild;
+            match this.focused_child_index {
+                FocusState::SelfFocused => {
+                    Box::new(BoxWrappingElement {
+                        child: child_element,
+                    }) as Box<dyn Element>
+                }
+                _ => child_element,
+            }
+        },
+        None => Box::new(EmptyElement {}),
+    };
+    (final_did_rebuild, element)
+}
+
+fn create_children<T, F>(create_element: F) -> impl Fn(&mut Widget<T>) -> (bool, Box<dyn Element>)
+where
+    T: 'static,
+    F: Fn(&mut Widget<T>, Vec<Box<dyn Element>>) -> (bool, Box<dyn Element>) + 'static,
+{
+    move |this: &mut Widget<T>| {
+        let (did_build, new_children) = this._build();
+        
+        // Reconcile children
+        let did_reconcile = reconcile_children_vec_in_place(
+            &mut this.children,
+            new_children,
+        );
+        
+        // Create elements for all children
+        let mut child_elements = Vec::new();
+        let mut any_child_rebuilt = false;
+        
+        for child in &this.children {
+            let (child_did_rebuild, child_element) = child.borrow_mut().create_element();
+            child_elements.push(child_element);
+            any_child_rebuilt = any_child_rebuilt || child_did_rebuild;
+        }
+        
+        // Call the custom create_element with child_elements
+        let (custom_did_rebuild, custom_element) = create_element(this, child_elements);
+        
+        // Combine rebuild flags
+        let did_any_rebuild = did_build || did_reconcile || any_child_rebuilt || custom_did_rebuild;
+        (did_any_rebuild, custom_element)
+    }
+}
+
+// move to element.rs
+struct EmptyElement {}
+
+impl Element for EmptyElement {
+    fn draw(&self, size: crate::prelude::Size, display_list: &mut crate::prelude::DisplayList) {}
 }
 
 impl<State> _Component for Widget<State> {
@@ -187,18 +384,102 @@ impl<State> _Component for Widget<State> {
     fn id(&self) -> usize {
         self.id
     }
+    
     #[inline]
     fn create_element(&mut self) -> (bool, Box<dyn Element>) {
         (self.create_element.clone())(self)
     }
+    
     #[inline]
     fn on_message(&mut self, event: &Message) {
         (self.on_message.clone())(self, event);
     }
+    
+    fn change_focus(&mut self, dir: Dir) -> FocusState {
+        // eprintln!("change_focus entered: {}, is_focusable: {}, numchild: {}", self.id, self.is_focusable, self.children.len());
+        if self.is_focusable && matches!(self.focused_child_index, FocusState::NotFocused) {
+            self.focused_child_index = FocusState::SelfFocused;
+            return FocusState::SelfFocused;
+        }
+        
+        // Clear current focus
+        let old_focus = std::mem::replace(&mut self.focused_child_index, FocusState::NotFocused);
+
+        if self.children.len() == 0 {
+            return FocusState::NotFocused;
+        }
+        
+        let starting_idx = match old_focus {
+            FocusState::ChildFocused { index, .. } => index,
+            _ => match dir {
+                Dir::Positive => 0,
+                Dir::Negative => self.children.len() - 1,
+            },
+        };
+
+        let mut idx = starting_idx;
+        while 0 <= idx && idx < self.children.len() {
+            let child_result = self.children[idx].borrow_mut().change_focus(dir);
+            match child_result {
+                FocusState::SelfFocused => {
+                    self.focused_child_index = FocusState::ChildFocused {
+                        index: idx,
+                    };
+                    return FocusState::ChildFocused {
+                        index: idx,
+                    };
+                }
+                FocusState::ChildFocused { index: child_idx } => {
+                    self.focused_child_index = FocusState::ChildFocused {
+                        index: idx,
+                    };
+                    return FocusState::ChildFocused { index: child_idx };
+                }
+                FocusState::NotFocused => ()
+            }
+            if idx == 0 && dir == Dir::Negative {
+                return FocusState::NotFocused;
+            }
+            idx = match dir {
+                Dir::Positive => idx + 1,
+                Dir::Negative => idx - 1,
+            }
+        }
+
+        self.focused_child_index = FocusState::NotFocused;
+        return FocusState::NotFocused;
+    }
 }
 
-pub fn propagate(this: &mut Widget<Vec<Component>>, msg: &Message) {
-    this.state
+fn handle_message_to_focused<State>(
+    on_message: impl Fn(&mut Widget<State>, &Message) + 'static,
+) -> impl Fn(&mut Widget<State>, &Message) + 'static {
+    move |this, msg| {
+        let mut handled = false;
+        switch(msg).case(|wrapped: &MessageToFocused| {
+            handled = true;
+            match this.focused_child_index {
+                FocusState::SelfFocused => {
+                    on_message(this, &wrapped.internal);
+                }
+                FocusState::ChildFocused { index } => {
+                    if index < this.children.len() {
+                        this.children[index].borrow_mut().on_message(msg);
+                    } else {
+                        eprintln!("error focused index out of range"); //TODO: better debug system
+                    }
+                }
+                FocusState::NotFocused => {}
+            }
+        });
+        if !handled {
+            on_message(this, msg);
+        }
+    }
+}
+
+pub fn propagate<State>(this: &mut Widget<State>, msg: &Message) {
+    this.children
         .iter()
         .for_each(|child| child.borrow_mut().on_message(msg));
 }
